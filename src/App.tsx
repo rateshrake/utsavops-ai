@@ -268,6 +268,7 @@ const App: React.FC = () => {
               profile={profile}
               budgetCategories={budgetCategories}
               crisisScenarios={crisisScenarios}
+              planSummary={planSummary}
               onBudgetUpdate={setBudgetCategories}
               onApplyRevision={handleApplyRevision}
             />
@@ -285,8 +286,6 @@ const App: React.FC = () => {
             <VendorQuoteAnalyzer
               profile={profile}
               budgetCategories={budgetCategories}
-              quotes={vendorQuotes}
-              onQuotesChange={setVendorQuotes}
               onLockVendorPrice={handleLockVendorPrice}
             />
           )}
