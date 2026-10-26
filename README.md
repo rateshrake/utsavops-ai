@@ -244,4 +244,5 @@ npm run build
 Designed and built for **PromptWars Challenge 5: Celebration & Event Planner**.  
 Powered by Google Gemini 2.5 Flash.
 #   u t s a v o p s - a i  
+ #   u t s a v o p s - a i  
  
