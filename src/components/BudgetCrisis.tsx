@@ -6,7 +6,7 @@
 // =============================================================================
 
 import React, { useState } from 'react';
-import { AlertCircle, CheckCircle2, ShieldCheck, IndianRupee, Users, Sparkles } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, IndianRupee, Users, Sparkles } from 'lucide-react';
 import type {
   BudgetCategory,
   CrisisScenario,
@@ -22,6 +22,7 @@ import { ConstraintShockPanel } from './budget/ConstraintShockPanel';
 import { TradeOffStrategyCards } from './budget/TradeOffStrategyCards';
 import { CrisisRiskTable } from './budget/CrisisRiskTable';
 import { LoadingSkeleton } from './LoadingSkeleton';
+import { ErrorRetryAlert } from './ErrorRetryAlert';
 import { ErrorBoundary } from './ErrorBoundary';
 
 interface BudgetCrisisProps {
@@ -78,9 +79,9 @@ export const BudgetCrisis: React.FC<BudgetCrisisProps> = ({
       }
     } catch (err) {
       console.warn('[UtsavOps AI] Tradeoff simulation API error, falling back to preset strategies:', err);
+      const msg = err instanceof Error ? err.message : 'Trade-off simulation failed.';
+      setSimError(msg);
       setTradeOffStrategies(DEFAULT_TRADE_OFF_STRATEGIES);
-      setToastMessage('Loaded intelligent trade-off strategies (AI cloud reported a temporary internal error).');
-      setTimeout(() => setToastMessage(null), 4500);
     } finally {
       setIsSimulating(false);
     }
@@ -218,18 +219,27 @@ export const BudgetCrisis: React.FC<BudgetCrisisProps> = ({
         />
 
         {simError && (
-          <div role="alert" className="p-3.5 bg-red-50 border border-red-200 rounded-2xl text-red-800 text-xs flex items-center gap-2">
-            <AlertCircle size={15} className="text-red-600 flex-shrink-0" />
-            <span>{simError}</span>
-          </div>
+          <ErrorRetryAlert
+            error={simError}
+            onRetry={() => handleSimulateShock(activeShockTitle || 'Cut budget by 10%')}
+            onDismiss={() => setSimError(null)}
+            title="Trade-off Simulation Error"
+          />
         )}
 
-        {/* Loading Skeleton during AI trade-off simulation */}
+        {/* Loading Skeleton with Animated Progress Bar during AI trade-off simulation */}
         {isSimulating && (
           <LoadingSkeleton
-            label="Exploring plan adjustment strategies with Gemini..."
+            label="Exploring plan adjustment strategies with OpenRouter..."
             subLabel={`Protecting your #1 priority (${topPriority}) while recalculating budget envelopes...`}
             cardCount={3}
+            estimatedDurationSeconds={8}
+            steps={[
+              'Analyzing budget shock constraint',
+              `Protecting non-negotiable envelope (${topPriority})`,
+              'Formulating 3 balanced trade-off options',
+              'Calculating revised per-head envelopes',
+            ]}
           />
         )}
 

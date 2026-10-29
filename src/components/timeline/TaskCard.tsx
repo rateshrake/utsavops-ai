@@ -199,16 +199,31 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           </div>
 
           {isSimulating && (
-            <div className="flex items-center gap-2 text-slate-600 py-2">
-              <Loader2 size={14} className="animate-spin text-amber-600" />
-              <span>Analyzing domino effects and recovery actions...</span>
+            <div className="space-y-1.5 py-2">
+              <div className="flex items-center justify-between text-xs text-amber-900 font-medium">
+                <span className="flex items-center gap-1.5">
+                  <Loader2 size={13} className="animate-spin text-amber-600" />
+                  <span>Analyzing domino schedule adjustments with AI...</span>
+                </span>
+                <span className="text-[11px] font-mono text-amber-700">~6s</span>
+              </div>
+              <div className="h-1.5 w-full bg-amber-100 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-amber-500 to-indigo-500 rounded-full w-3/4 animate-pulse" />
+              </div>
             </div>
           )}
 
           {error && (
-            <p className="text-rose-700 bg-rose-50 p-2 rounded-lg border border-rose-200">
-              {error}
-            </p>
+            <div className="flex items-center justify-between gap-2 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">
+              <span className="truncate">{error}</span>
+              <button
+                type="button"
+                onClick={() => runAnalysis(delayDays)}
+                className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold shrink-0 cursor-pointer text-[11px] shadow-2xs"
+              >
+                🔄 Retry
+              </button>
+            </div>
           )}
 
           {analysis && !isSimulating && (

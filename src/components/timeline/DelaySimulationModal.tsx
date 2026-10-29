@@ -111,7 +111,7 @@ export const DelaySimulationModal: React.FC<DelaySimulationModalProps> = ({
             {isSimulatingDelay ? (
               <>
                 <RefreshCw size={15} className="animate-spin text-white" />
-                <span>Analyzing Domino Effects with Gemini...</span>
+                <span>Analyzing Domino Effects with OpenRouter...</span>
               </>
             ) : (
               <>

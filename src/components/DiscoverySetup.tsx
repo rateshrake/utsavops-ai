@@ -8,17 +8,24 @@
 import React, { useState, useMemo } from 'react';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import type { EventProfile, ClarifyingQuestion } from '../types/event';
-import { generateSmartQuestions, isApiKeyAvailable } from '../services/geminiService';
+import {
+  generateSmartQuestions,
+  isApiKeyAvailable,
+  getModelDisplayName,
+} from '../services/geminiService';
 import { EventIntakeForm } from './discovery/EventIntakeForm';
 import { PriorityRanker } from './discovery/PriorityRanker';
 import { SmartQuestionsStep } from './discovery/SmartQuestionsStep';
 import { LoadingSkeleton } from './LoadingSkeleton';
+import { ErrorRetryAlert } from './ErrorRetryAlert';
 import { ErrorBoundary } from './ErrorBoundary';
 
 interface DiscoverySetupProps {
   profile: EventProfile;
   onProfileChange: (p: EventProfile) => void;
   onGenerate: (overrideProfile?: EventProfile) => Promise<void>;
+  onUseOfflineFallback?: (overrideProfile?: EventProfile) => void;
+  onClearError?: () => void;
   isGenerating: boolean;
   error: string | null;
   hasApiKey?: boolean;
@@ -37,6 +44,8 @@ export const DiscoverySetup: React.FC<DiscoverySetupProps> = ({
   profile,
   onProfileChange,
   onGenerate,
+  onUseOfflineFallback,
+  onClearError,
   isGenerating,
   error,
   hasApiKey = false,
@@ -55,17 +64,27 @@ export const DiscoverySetup: React.FC<DiscoverySetupProps> = ({
     return Math.round(profile.totalBudget / profile.guestCount);
   }, [profile.totalBudget, profile.guestCount]);
 
-  const currentPriorities = useMemo(() => {
-    const list = [...profile.prioritiesRanked];
-    for (const item of CORE_PRIORITIES) {
-      if (!list.includes(item)) list.push(item);
+  const selectedPriorities = useMemo(() => {
+    if (profile.prioritiesRanked && profile.prioritiesRanked.length > 0) {
+      return profile.prioritiesRanked;
+    }
+    return CORE_PRIORITIES;
+  }, [profile.prioritiesRanked]);
+
+  const allPriorities = useMemo(() => {
+    const list = [...CORE_PRIORITIES];
+    if (profile.prioritiesRanked) {
+      for (const item of profile.prioritiesRanked) {
+        if (!list.includes(item)) list.push(item);
+      }
     }
     return list;
   }, [profile.prioritiesRanked]);
 
   const handleMovePriority = (item: string, direction: 'up' | 'down') => {
-    const list = [...currentPriorities];
+    const list = [...selectedPriorities];
     const i = list.indexOf(item);
+    if (i === -1) return;
     if (direction === 'up' && i > 0) {
       [list[i - 1], list[i]] = [list[i], list[i - 1]];
     }
@@ -73,6 +92,19 @@ export const DiscoverySetup: React.FC<DiscoverySetupProps> = ({
       [list[i + 1], list[i]] = [list[i], list[i + 1]];
     }
     update({ prioritiesRanked: list });
+  };
+
+  const handleTogglePriority = (item: string) => {
+    const list = [...selectedPriorities];
+    const isSelected = list.includes(item);
+    if (isSelected) {
+      if (list.length <= 1) return;
+      const updated = list.filter((p) => p !== item);
+      update({ prioritiesRanked: updated });
+    } else {
+      const updated = [...list, item];
+      update({ prioritiesRanked: updated });
+    }
   };
 
   const handleGetSmartQuestions = async () => {
@@ -111,26 +143,37 @@ export const DiscoverySetup: React.FC<DiscoverySetupProps> = ({
   return (
     <ErrorBoundary fallbackTitle="Error loading Event Setup wizard">
       <section aria-label="Tell us about your celebration" className="max-w-5xl mx-auto space-y-6">
-        {/* Friendly Indigo Info Bar when no API key is set */}
-        {!hasApiKey && (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 bg-indigo-50/80 border border-indigo-200/80 rounded-2xl text-xs text-indigo-950 shadow-2xs">
-            <div className="flex items-center gap-2.5">
-              <Sparkles size={16} className="text-indigo-600 shrink-0" />
-              <span>
-                <strong>Smart Demo Mode Active:</strong> Intelligent fallback plans with curated Indian celebration data. Add an API key anytime for live Gemini generation.
-              </span>
-            </div>
+        {/* Provider & BYOK Quick Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:px-4 bg-indigo-50/70 border border-indigo-200/70 rounded-2xl text-xs text-indigo-950 shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <Sparkles size={16} className="text-indigo-600 shrink-0" />
+            <span>
+              <strong>{hasApiKey ? 'Live AI Ready' : 'AI Ready'} ({getModelDisplayName()}):</strong> Using default OpenRouter connection or your custom key.
+            </span>
+          </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
             {onOpenApiModal && (
               <button
                 type="button"
                 onClick={onOpenApiModal}
-                className="px-3 py-1.5 bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl font-semibold shrink-0 cursor-pointer shadow-2xs transition-colors self-start sm:self-auto flex items-center gap-1.5"
+                className="px-3 py-1.5 bg-white hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl font-semibold cursor-pointer shadow-2xs transition-colors flex items-center gap-1.5"
+                title="Change provider, model or enter custom API key"
               >
-                <span>🔑 Enter API Key</span>
+                <span>🔑 Change Provider / Key</span>
+              </button>
+            )}
+            {onUseOfflineFallback && (
+              <button
+                type="button"
+                onClick={() => onUseOfflineFallback(profile)}
+                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium cursor-pointer transition-colors flex items-center gap-1"
+                title="Generate smart calibrated plan instantly without API call"
+              >
+                <span>⚡ Demo Plan</span>
               </button>
             )}
           </div>
-        )}
+        </div>
 
         {/* Centered Main Card */}
         <div className="bg-white border border-slate-200 rounded-3xl shadow-sm p-6 sm:p-8 space-y-6">
@@ -193,19 +236,33 @@ export const DiscoverySetup: React.FC<DiscoverySetupProps> = ({
             </div>
           </div>
 
-          {/* Real Error Message (filtered so missing API key isn't a harsh red banner) */}
-          {error && !error.toLowerCase().includes('api key') && (
-            <div role="alert" className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-800 text-xs">
-              {error}
-            </div>
+          {/* Real Error Message with Diagnosis & 1-Click Retry */}
+          {error && (
+            <ErrorRetryAlert
+              error={error}
+              onRetry={() => onGenerate()}
+              onFallback={() => onUseOfflineFallback?.(profile)}
+              onOpenApiModal={onOpenApiModal}
+              onDismiss={onClearError}
+              isRetrying={isGenerating}
+              title="Celebration Plan Generation Error"
+            />
           )}
 
-          {/* Loading Skeleton while generating plan */}
+          {/* Loading Skeleton with Animated Progress Bar while generating plan */}
           {isGenerating && (
             <LoadingSkeleton
-              label="Creating your personalized celebration plan..."
-              subLabel="Balancing venue, catering envelopes, and timeline checklist..."
+              label={`Creating your personalized celebration plan with ${getModelDisplayName()}...`}
+              subLabel="Balancing venue envelopes, catering menus, critical timeline checklist, and risk pre-mortems..."
               cardCount={3}
+              estimatedDurationSeconds={25}
+              steps={[
+                `Connecting to ${getModelDisplayName()} & reading priorities`,
+                'Structuring budget envelopes & calculating math balance',
+                'Generating chronological critical-path timeline',
+                'Auditing weather & guest surge contingency playbooks',
+                'Synchronizing executive celebration master plan',
+              ]}
             />
           )}
 
@@ -225,8 +282,10 @@ export const DiscoverySetup: React.FC<DiscoverySetupProps> = ({
                 {/* Right Column: Clean Compact Priority List */}
                 <div className="lg:col-span-5 bg-slate-50/70 border border-slate-200/80 rounded-2xl p-4 sm:p-5">
                   <PriorityRanker
-                    priorities={currentPriorities}
+                    selectedPriorities={selectedPriorities}
+                    allPriorities={allPriorities}
                     onMovePriority={handleMovePriority}
+                    onTogglePriority={handleTogglePriority}
                   />
                 </div>
               </div>
@@ -268,6 +327,7 @@ export const DiscoverySetup: React.FC<DiscoverySetupProps> = ({
               onGeneratePlan={() => onGenerate()}
               onBackToBasics={() => setCurrentStep(1)}
               isGenerating={isGenerating}
+              onOpenApiModal={onOpenApiModal}
             />
           )}
         </div>

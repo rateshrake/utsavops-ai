@@ -11,7 +11,6 @@ import React, { useState } from 'react';
 import {
   FileText,
   Loader2,
-  AlertCircle,
   Sparkles,
   Trophy,
   CheckCircle2,
@@ -34,6 +33,7 @@ import {
 import { QuoteInputTabs, type QuoteInputItem } from './quotes/QuoteInputTabs';
 import { QuoteComparisonCard } from './quotes/QuoteComparisonCard';
 import { LoadingSkeleton } from './LoadingSkeleton';
+import { ErrorRetryAlert } from './ErrorRetryAlert';
 import { ErrorBoundary } from './ErrorBoundary';
 
 interface VendorQuoteAnalyzerProps {
@@ -273,10 +273,12 @@ export const VendorQuoteAnalyzer: React.FC<VendorQuoteAnalyzerProps> = ({
         />
 
         {comparisonError && (
-          <div role="alert" className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-800 text-xs flex items-center gap-2">
-            <AlertCircle size={15} className="text-red-600 flex-shrink-0" />
-            <span>{comparisonError}</span>
-          </div>
+          <ErrorRetryAlert
+            error={comparisonError}
+            onRetry={handleRunComparison}
+            onDismiss={() => setComparisonError(null)}
+            title="Vendor Quote Audit Notice"
+          />
         )}
 
         {/* 2. Big Centered Primary Button & Real-time Feedback */}
@@ -326,6 +328,13 @@ export const VendorQuoteAnalyzer: React.FC<VendorQuoteAnalyzerProps> = ({
             label="Auditing vendor quotations with AI..."
             subLabel="Unmasking hidden taxes, generator surcharges, and drafting 4 tough WhatsApp questions..."
             cardCount={2}
+            estimatedDurationSeconds={8}
+            steps={[
+              'Auditing itemized costs & unit rates against headcount',
+              'Detecting hidden clauses (corkage, overtime, taxes)',
+              'Benchmarking against category envelope allocation',
+              'Drafting tough WhatsApp negotiation queries',
+            ]}
           />
         )}
 

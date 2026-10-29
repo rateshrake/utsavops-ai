@@ -5,8 +5,10 @@
 // =============================================================================
 
 import React from 'react';
-import { Sparkles, Loader2, Lightbulb, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Sparkles, Loader2, Lightbulb, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import type { ClarifyingQuestion } from '../../types/event';
+import { ErrorRetryAlert } from '../ErrorRetryAlert';
+import { LoadingSkeleton } from '../LoadingSkeleton';
 
 interface SmartQuestionsStepProps {
   questions: ClarifyingQuestion[];
@@ -17,6 +19,7 @@ interface SmartQuestionsStepProps {
   onGeneratePlan: () => void;
   onBackToBasics?: () => void;
   isGenerating: boolean;
+  onOpenApiModal?: () => void;
 }
 
 const getSuggestionsForQuestion = (q: ClarifyingQuestion, index: number): string[] => {
@@ -80,6 +83,7 @@ export const SmartQuestionsStep: React.FC<SmartQuestionsStepProps> = ({
   onGeneratePlan,
   onBackToBasics,
   isGenerating,
+  onOpenApiModal,
 }) => {
   return (
     <div className="space-y-6">
@@ -109,7 +113,7 @@ export const SmartQuestionsStep: React.FC<SmartQuestionsStepProps> = ({
           onClick={onGetSmartQuestions}
           disabled={isAskingQuestions}
           className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs self-start sm:self-auto disabled:opacity-50"
-          aria-label="Ask Gemini for fresh smart questions"
+          aria-label="Ask AI for fresh smart questions"
         >
           {isAskingQuestions ? (
             <>
@@ -126,16 +130,30 @@ export const SmartQuestionsStep: React.FC<SmartQuestionsStepProps> = ({
       </div>
 
       {questionsError && (
-        <div
-          role="alert"
-          className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-xs flex items-center gap-2"
-        >
-          <AlertCircle size={15} className="text-amber-600 flex-shrink-0" />
-          <span>{questionsError}</span>
-        </div>
+        <ErrorRetryAlert
+          error={questionsError}
+          onRetry={onGetSmartQuestions}
+          onOpenApiModal={onOpenApiModal}
+          title="Smart Questions Generation Notice"
+        />
+      )}
+
+      {isAskingQuestions && (
+        <LoadingSkeleton
+          label="OpenRouter is analyzing your celebration..."
+          subLabel="Formulating 3 targeted questions covering venue weather, catering constraints, and logistics..."
+          cardCount={2}
+          estimatedDurationSeconds={6}
+          steps={[
+            'Reading event occasion, headcount, and vibe',
+            'Identifying unstated operational bottlenecks',
+            'Drafting high-impact clarifying questions',
+          ]}
+        />
       )}
 
       {/* 3 Questions List */}
+      {!isAskingQuestions && (
       <div className="space-y-4">
         {questions.slice(0, 3).map((q, idx) => {
           const suggestions = getSuggestionsForQuestion(q, idx);
@@ -203,6 +221,7 @@ export const SmartQuestionsStep: React.FC<SmartQuestionsStepProps> = ({
           );
         })}
       </div>
+      )}
 
       {/* Emerald Bottom Action Button */}
       <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3">

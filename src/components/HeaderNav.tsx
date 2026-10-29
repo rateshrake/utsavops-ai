@@ -26,6 +26,7 @@ interface HeaderNavProps {
   daysLeft: number;
   hasApiKey: boolean;
   onOpenApiModal: () => void;
+  activeModel?: string;
 }
 
 const fmt = (n: number) =>
@@ -40,6 +41,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   daysLeft,
   hasApiKey,
   onOpenApiModal,
+  activeModel,
 }) => {
   return (
     <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-xs">
@@ -117,15 +119,17 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               type="button"
               onClick={onOpenApiModal}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-xs transition-colors cursor-pointer shrink-0"
-              title="Click to configure Gemini API Key"
-              aria-label="API key settings modal"
+              title={`Configured: ${hasApiKey ? 'AI active' : 'Smart Demo mode'} • Active: ${activeModel || 'OpenRouter • openrouter/free'}`}
+              aria-label="API key and model settings modal"
             >
               <span
                 className={`w-2 h-2 rounded-full shrink-0 ${
                   hasApiKey ? 'bg-emerald-500 ring-2 ring-emerald-100' : 'bg-amber-400 ring-2 ring-amber-100'
                 }`}
               />
-              <span className="hidden sm:inline font-medium">API Key</span>
+              <span className="hidden sm:inline font-medium">
+                {activeModel || 'OpenRouter • openrouter/free'}
+              </span>
               <Key size={13} className="text-slate-400 shrink-0" />
             </button>
           </div>

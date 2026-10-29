@@ -3,7 +3,7 @@
 // Responsive dashboard with top nav, summary pills, and 4 main tabs.
 // =============================================================================
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import type {
   EventProfile,
   BudgetCategory,
@@ -11,7 +11,13 @@ import type {
   CrisisScenario,
   TradeOffStrategy,
 } from './types/event';
-import { generateFullPlan, isApiKeyAvailable } from './services/geminiService';
+import {
+  generateFullPlan,
+  generateSmartDemoPlan,
+  isApiKeyAvailable,
+  getSelectedModel,
+  getModelDisplayName,
+} from './services/geminiService';
 import {
   DEFAULT_PROFILE,
   DEFAULT_BUDGET_CATEGORIES,
@@ -56,51 +62,70 @@ const App: React.FC = () => {
 
   const daysLeft = getDaysLeft(profile.date);
   const hasKey = apiKeyRefresh >= 0 && isApiKeyAvailable();
+  const currentModelName = apiKeyRefresh >= 0 ? getModelDisplayName(getSelectedModel()) : 'LangChain • OpenRouter (openrouter/free)';
 
-  const handleGenerate = useCallback(async (overrideProfile?: EventProfile) => {
-    setIsGenerating(true);
-    setGenError(null);
-    const targetProfile = overrideProfile || profile;
-    if (overrideProfile) {
-      setProfile(overrideProfile);
-    }
-    try {
-      if (isApiKeyAvailable()) {
-        try {
-          const plan = await generateFullPlan(targetProfile);
-          setBudgetCategories(plan.budgetCategories);
-          setTimelineTasks(plan.timelineTasks);
-          setCrisisScenarios(plan.crisisScenarios);
-          setPlanSummary(plan.planSummary);
-          setActiveTab('budget');
-          return;
-        } catch (apiErr) {
-          console.warn('[UtsavOps AI] Cloud Gemini API error, seamlessly switching to smart offline planner:', apiErr);
-          // If Gemini reported internal error or failed, fall through to smart offline planner
-        }
-      }
+  // Auto-refresh API status on mount
+  useEffect(() => {
+    setApiKeyRefresh((r) => r + 1);
+  }, []);
 
-      // Smart Demo & Resilient Fallback: scale budget allocations proportionally to user-selected total budget
-      const total = targetProfile.totalBudget;
-      const scaledCategories = DEFAULT_BUDGET_CATEGORIES.map((cat) => ({
-        ...cat,
-        allocatedAmount: Math.round((cat.allocatedAmount / DEFAULT_PROFILE.totalBudget) * total),
-      }));
-      const sumAlloc = scaledCategories.reduce((acc, c) => acc + c.allocatedAmount, 0);
-      if (sumAlloc !== total && scaledCategories.length > 0) {
-        scaledCategories[0].allocatedAmount += total - sumAlloc;
+  const handleGenerateOfflineFallback = useCallback(
+    (targetProfile?: EventProfile) => {
+      const prof = targetProfile || profile;
+      if (targetProfile) {
+        setProfile(targetProfile);
       }
-      setBudgetCategories(scaledCategories);
-      setPlanSummary(
-        `Smart master plan generated for ${targetProfile.occasion} (${targetProfile.title}). Budget allocated at ₹${total.toLocaleString('en-IN')} for ${targetProfile.guestCount} guests, prioritizing ${targetProfile.prioritiesRanked[0] || 'Catering'}.`
-      );
-      setActiveTab('budget');
-    } catch (err) {
-      setGenError(err instanceof Error ? err.message : 'AI generation failed. Please try again.');
-    } finally {
+      const smartPlan = generateSmartDemoPlan(prof);
+      setBudgetCategories(smartPlan.budgetCategories);
+      setTimelineTasks(smartPlan.timelineTasks);
+      setCrisisScenarios(smartPlan.crisisScenarios);
+      setPlanSummary(smartPlan.planSummary);
+      setGenError(null);
       setIsGenerating(false);
-    }
-  }, [profile]);
+      setActiveTab('budget');
+    },
+    [profile]
+  );
+
+  const handleGenerate = useCallback(
+    async (overrideProfile?: EventProfile) => {
+      setIsGenerating(true);
+      setGenError(null);
+      const targetProfile = overrideProfile || profile;
+      if (overrideProfile) {
+        setProfile(overrideProfile);
+      }
+      try {
+        if (isApiKeyAvailable()) {
+          try {
+            const plan = await generateFullPlan(targetProfile);
+            setBudgetCategories(plan.budgetCategories);
+            setTimelineTasks(plan.timelineTasks);
+            setCrisisScenarios(plan.crisisScenarios);
+            setPlanSummary(plan.planSummary);
+            setActiveTab('budget');
+            return;
+          } catch (apiErr) {
+            console.warn('[UtsavOps AI] Cloud OpenRouter API error:', apiErr);
+            const msg =
+              apiErr instanceof Error
+                ? apiErr.message
+                : 'OpenRouter AI generation failed. Click Retry to try again.';
+            setGenError(msg);
+            return;
+          }
+        }
+
+        // If no API key configured, use smart demo fallback directly
+        handleGenerateOfflineFallback(targetProfile);
+      } catch (err) {
+        setGenError(err instanceof Error ? err.message : 'AI generation failed. Please try again.');
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [profile, handleGenerateOfflineFallback]
+  );
 
   const handleLockVendorPrice = useCallback(
     (categoryName: string, vendorName: string, amount: number) => {
@@ -245,6 +270,7 @@ const App: React.FC = () => {
         guestCount={profile.guestCount}
         daysLeft={daysLeft}
         hasApiKey={hasKey}
+        activeModel={currentModelName}
         onOpenApiModal={() => setApiModalOpen(true)}
       />
 
@@ -256,6 +282,8 @@ const App: React.FC = () => {
               profile={profile}
               onProfileChange={setProfile}
               onGenerate={handleGenerate}
+              onUseOfflineFallback={handleGenerateOfflineFallback}
+              onClearError={() => setGenError(null)}
               isGenerating={isGenerating}
               error={genError}
               hasApiKey={hasKey}
@@ -297,7 +325,7 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p>© 2026 UtsavAI — Smart Celebration & Event Planner.</p>
           <p className="flex items-center gap-1.5 font-mono text-[11px] text-slate-400">
-            <span>Model: Gemini 3.8 Flash</span>
+            <span>Model: {currentModelName}</span>
             <span>•</span>
             <span>Zero Data Loss State Sync</span>
           </p>

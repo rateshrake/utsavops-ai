@@ -25,3 +25,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Testing artifacts and scratch scripts
+test-artifacts/
+scripts/
+TESTING_REPORT.txt
+
