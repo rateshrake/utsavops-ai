@@ -148,7 +148,15 @@ export const DiscoverySetup: React.FC<DiscoverySetupProps> = ({
           <div className="flex items-center gap-2.5">
             <Sparkles size={16} className="text-indigo-600 shrink-0" />
             <span>
-              <strong>{hasApiKey ? 'Live AI Ready' : 'AI Ready'} ({getModelDisplayName()}):</strong> Using default OpenRouter connection or your custom key.
+              {hasApiKey ? (
+                <>
+                  <strong className="text-emerald-700">Live AI Ready ({getModelDisplayName()}):</strong> Using configured API key.
+                </>
+              ) : (
+                <>
+                  <strong className="text-amber-700">Demo Mode Available:</strong> No API key configured. Click Generate to use demo mode or set up your key.
+                </>
+              )}
             </span>
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">

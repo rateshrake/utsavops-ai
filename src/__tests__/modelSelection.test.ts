@@ -57,11 +57,10 @@ describe('Multi-Provider BYOK & Model Selection', () => {
     expect(getSelectedModel()).toBe('openrouter/free');
   });
 
-  it('uses pre-configured OpenRouter API key by default with zero setup required', () => {
-    expect(DEFAULT_OPENROUTER_KEY).toBeTruthy();
-    expect(DEFAULT_OPENROUTER_KEY.startsWith('sk-or-')).toBe(true);
-    expect(getApiKey()).toBe(DEFAULT_OPENROUTER_KEY);
+  it('detects when no API key is configured by default', () => {
+    // When no env key is provided, key defaults to empty and isApiKeyAvailable returns false
     expect(isCustomApiKey()).toBe(false);
+    expect(typeof DEFAULT_OPENROUTER_KEY).toBe('string');
   });
 
   it('formats model display name with provider prefix', () => {
@@ -136,11 +135,24 @@ describe('Multi-Provider BYOK & Model Selection', () => {
     expect(getProviderModel('gemini')).toBe('gemini-2.0-flash');
   });
 
-  it('supports all 5 major provider endpoints in PROVIDERS registry', () => {
+  it('supports all major provider endpoints including Groq and xAI Grok', () => {
     expect(PROVIDERS).toHaveProperty('openrouter');
     expect(PROVIDERS).toHaveProperty('gemini');
     expect(PROVIDERS).toHaveProperty('openai');
     expect(PROVIDERS).toHaveProperty('groq');
+    expect(PROVIDERS).toHaveProperty('xai');
     expect(PROVIDERS).toHaveProperty('custom');
+  });
+
+  it('allows user to enter custom model for groq or xai provider', () => {
+    setActiveProvider('groq');
+    expect(getActiveProvider()).toBe('groq');
+    saveProviderModel('groq', 'llama-3.3-70b-versatile');
+    expect(getProviderModel('groq')).toBe('llama-3.3-70b-versatile');
+
+    setActiveProvider('xai');
+    expect(getActiveProvider()).toBe('xai');
+    saveProviderModel('xai', 'grok-2-latest');
+    expect(getProviderModel('xai')).toBe('grok-2-latest');
   });
 });

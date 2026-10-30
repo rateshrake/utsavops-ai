@@ -2,25 +2,22 @@
 // UtsavOps AI — LangChain Multi-Provider & BYOK Engine
 // Supports "Bring Your Own Key" (BYOK) across:
 // 1. OpenRouter (openrouter.ai)
-// 2. Google Gemini (via OpenAI-compatible endpoint)
-// 3. OpenAI (api.openai.com)
-// 4. Groq (api.groq.com)
-// 5. Custom OpenAI-compatible endpoints (Ollama, Together, vLLM, etc.)
+// 2. Groq (api.groq.com)
+// 3. Google Gemini (generativelanguage.googleapis.com)
+// 4. OpenAI (api.openai.com)
+// 5. xAI Grok (api.x.ai)
+// 6. Custom OpenAI-compatible endpoints (Ollama, Together, vLLM, etc.)
 // Powered by LangChain (@langchain/openai & @langchain/core).
 // =============================================================================
 
 import { ChatOpenAI } from '@langchain/openai';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 
-export type ProviderId = 'openrouter' | 'gemini' | 'openai' | 'groq' | 'xai' | 'custom';
+export type ProviderId = 'openrouter' | 'groq' | 'gemini' | 'openai' | 'xai' | 'custom';
 
 export interface ModelOption {
   id: string;
   name: string;
-  badge?: string;
-  speed?: string;
-  description?: string;
-  group?: string;
 }
 
 export interface ProviderDefinition {
@@ -29,11 +26,10 @@ export interface ProviderDefinition {
   shortName: string;
   baseUrl: string;
   defaultModel: string;
+  modelPlaceholder: string;
   keyPrefix?: string;
   keyPlaceholder: string;
   keyDocUrl: string;
-  models: ModelOption[];
-  isPreconfigured?: boolean;
 }
 
 export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
@@ -43,52 +39,21 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
     shortName: 'OpenRouter',
     baseUrl: 'https://openrouter.ai/api/v1',
     defaultModel: 'openrouter/free',
+    modelPlaceholder: 'e.g. openrouter/free, deepseek/deepseek-chat',
     keyPrefix: 'sk-or-',
     keyPlaceholder: 'sk-or-v1-...',
     keyDocUrl: 'https://openrouter.ai/keys',
-    isPreconfigured: true,
-    models: [
-      {
-        id: 'openrouter/free',
-        name: 'OpenRouter Free',
-        group: 'Free',
-        badge: 'Free Router',
-        speed: '~20–50s',
-        description: 'Auto-routes across free models (DeepSeek, Llama, Mistral, Nemotron) with zero credit requirement.',
-      },
-      {
-        id: 'google/gemini-2.0-flash-exp:free',
-        name: 'Gemini 2.0 Flash (Free)',
-        group: 'Google',
-        badge: 'Fast Free',
-        speed: '~4–8s',
-        description: 'Google Gemini 2.0 Flash experimental model routed through OpenRouter.',
-      },
-      {
-        id: 'deepseek/deepseek-chat',
-        name: 'DeepSeek V3',
-        group: 'DeepSeek',
-        badge: 'Popular',
-        speed: '~3–6s',
-        description: 'DeepSeek V3 flagship 671B model with exceptional reasoning at low cost.',
-      },
-      {
-        id: 'openai/gpt-4o-mini',
-        name: 'GPT-4o Mini',
-        group: 'OpenAI',
-        badge: 'High Precision',
-        speed: '~3–5s',
-        description: 'Affordable, low-latency version of GPT-4o with sharp structured output.',
-      },
-      {
-        id: 'meta-llama/llama-3.3-70b-instruct',
-        name: 'Llama 3.3 70B Instruct',
-        group: 'Meta',
-        badge: 'Open Weights',
-        speed: '~5–9s',
-        description: 'Meta flagship 70B open model for structured planning and logic.',
-      },
-    ],
+  },
+  groq: {
+    id: 'groq',
+    name: 'Groq',
+    shortName: 'Groq',
+    baseUrl: 'https://api.groq.com/openai/v1',
+    defaultModel: 'llama-3.3-70b-versatile',
+    modelPlaceholder: 'e.g. llama-3.3-70b-versatile, openai/gpt-oss-120b',
+    keyPrefix: 'gsk_',
+    keyPlaceholder: 'gsk_...',
+    keyDocUrl: 'https://console.groq.com/keys',
   },
   gemini: {
     id: 'gemini',
@@ -96,43 +61,10 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
     shortName: 'Gemini',
     baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     defaultModel: 'gemini-2.5-flash',
+    modelPlaceholder: 'e.g. gemini-2.5-flash, gemini-2.0-flash',
     keyPrefix: 'AIza',
-    keyPlaceholder: 'AIzaSy... (or AQ....)',
+    keyPlaceholder: 'AIzaSy...',
     keyDocUrl: 'https://aistudio.google.com/app/apikey',
-    models: [
-      {
-        id: 'gemini-2.5-flash',
-        name: 'Gemini 2.5 Flash',
-        group: 'Gemini 2.5',
-        badge: 'Recommended',
-        speed: '~2–4s',
-        description: 'Next-gen Google Flash model with top-tier latency and JSON schema adherence.',
-      },
-      {
-        id: 'gemini-2.0-flash',
-        name: 'Gemini 2.0 Flash',
-        group: 'Gemini 2.0',
-        badge: 'Ultra Fast',
-        speed: '~1.5–3s',
-        description: 'High throughput, low-latency multimodal model with generous rate limits.',
-      },
-      {
-        id: 'gemini-1.5-flash',
-        name: 'Gemini 1.5 Flash',
-        group: 'Gemini 1.5',
-        badge: 'Stable',
-        speed: '~3–5s',
-        description: 'Reliable high-speed production model with broad availability.',
-      },
-      {
-        id: 'gemini-1.5-pro',
-        name: 'Gemini 1.5 Pro',
-        group: 'Gemini 1.5',
-        badge: 'Deep Reasoning',
-        speed: '~5–8s',
-        description: 'Maximum depth for complex celebration logistics and budget reconciliation.',
-      },
-    ],
   },
   openai: {
     id: 'openai',
@@ -140,148 +72,10 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
     shortName: 'OpenAI',
     baseUrl: 'https://api.openai.com/v1',
     defaultModel: 'gpt-4o-mini',
+    modelPlaceholder: 'e.g. gpt-4o-mini, gpt-4o',
     keyPrefix: 'sk-',
     keyPlaceholder: 'sk-proj-...',
     keyDocUrl: 'https://platform.openai.com/api-keys',
-    models: [
-      {
-        id: 'gpt-4o-mini',
-        name: 'GPT-4o Mini',
-        group: 'GPT-4o',
-        badge: 'Recommended',
-        speed: '~2–4s',
-        description: 'Best price-to-performance model with precise JSON schema following.',
-      },
-      {
-        id: 'gpt-4o',
-        name: 'GPT-4o',
-        group: 'GPT-4o',
-        badge: 'Flagship',
-        speed: '~4–7s',
-        description: 'Full flagship model for unmatched creative nuances in Indian celebrations.',
-      },
-      {
-        id: 'gpt-3.5-turbo',
-        name: 'GPT-3.5 Turbo',
-        group: 'Legacy',
-        badge: 'Legacy',
-        speed: '~2–3s',
-        description: 'High-speed legacy standard model for fast drafting.',
-      },
-    ],
-  },
-  groq: {
-    id: 'groq',
-    name: 'Groq (Grok APIs)',
-    shortName: 'Groq',
-    baseUrl: 'https://api.groq.com/openai/v1',
-    defaultModel: 'openai/gpt-oss-120b',
-    keyPrefix: 'gsk_',
-    keyPlaceholder: 'gsk_...',
-    keyDocUrl: 'https://console.groq.com/keys',
-    models: [
-      // Meta Group (Matching user screenshot)
-      {
-        id: 'meta-llama/llama-prompt-guard-2-22m',
-        name: 'meta-llama/llama-prompt-guard-2-22m',
-        group: 'Meta',
-        badge: 'Safety',
-        speed: '~0.2s',
-        description: 'Meta prompt safety and injection classifier model (22M).',
-      },
-      {
-        id: 'meta-llama/llama-prompt-guard-2-86m',
-        name: 'meta-llama/llama-prompt-guard-2-86m',
-        group: 'Meta',
-        badge: 'Safety',
-        speed: '~0.3s',
-        description: 'Meta prompt safety and injection classifier model (86M).',
-      },
-      {
-        id: 'llama-3.3-70b-versatile',
-        name: 'llama-3.3-70b-versatile',
-        group: 'Meta',
-        badge: 'Versatile',
-        speed: '~1–2s',
-        description: 'Meta flagship 70B open weights model optimized for JSON and execution plans.',
-      },
-      {
-        id: 'llama-3.1-8b-instant',
-        name: 'llama-3.1-8b-instant',
-        group: 'Meta',
-        badge: 'Instant (<1s)',
-        speed: '~0.6s',
-        description: 'Sub-second response generation on Groq LPUs.',
-      },
-
-      // OpenAI Group (Matching user screenshot)
-      {
-        id: 'openai/gpt-oss-120b',
-        name: 'openai/gpt-oss-120b',
-        group: 'OpenAI',
-        badge: 'Selected',
-        speed: '~1–2s',
-        description: 'OpenAI open-source 120B model running on ultra-fast Groq LPU hardware.',
-      },
-      {
-        id: 'openai/gpt-oss-20b',
-        name: 'openai/gpt-oss-20b',
-        group: 'OpenAI',
-        badge: 'Fast',
-        speed: '~0.8s',
-        description: 'OpenAI open-source 20B efficient model.',
-      },
-      {
-        id: 'openai/gpt-oss-safeguard-20b',
-        name: 'openai/gpt-oss-safeguard-20b',
-        group: 'OpenAI',
-        badge: 'Guardrail',
-        speed: '~0.8s',
-        description: 'OpenAI safeguard 20B moderation and alignment classifier.',
-      },
-      {
-        id: 'whisper-large-v3',
-        name: 'whisper-large-v3',
-        group: 'OpenAI',
-        badge: 'Audio',
-        speed: '~0.5s',
-        description: 'OpenAI speech recognition model hosted on Groq.',
-      },
-      {
-        id: 'whisper-large-v3-turbo',
-        name: 'whisper-large-v3-turbo',
-        group: 'OpenAI',
-        badge: 'Audio Turbo',
-        speed: '~0.3s',
-        description: 'High-speed transcription model on Groq.',
-      },
-
-      // DeepSeek & Qwen Reasoning Group
-      {
-        id: 'deepseek-r1-distill-llama-70b',
-        name: 'deepseek-r1-distill-llama-70b',
-        group: 'DeepSeek',
-        badge: 'Reasoning',
-        speed: '~2s',
-        description: 'DeepSeek R1 reasoning architecture distilled into 70B Llama.',
-      },
-      {
-        id: 'qwen-qwq-32b',
-        name: 'qwen-qwq-32b',
-        group: 'Qwen',
-        badge: 'Reasoning',
-        speed: '~1.5s',
-        description: 'Qwen advanced mathematical reasoning model on Groq.',
-      },
-      {
-        id: 'mixtral-8x7b-32768',
-        name: 'mixtral-8x7b-32768',
-        group: 'Mistral',
-        badge: 'MoE',
-        speed: '~1.5s',
-        description: 'Mixture of Experts architecture balancing speed and nuanced vendor analysis.',
-      },
-    ],
   },
   xai: {
     id: 'xai',
@@ -289,60 +83,32 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
     shortName: 'Grok',
     baseUrl: 'https://api.x.ai/v1',
     defaultModel: 'grok-2-latest',
+    modelPlaceholder: 'e.g. grok-2-latest, grok-beta',
     keyPrefix: 'xai-',
     keyPlaceholder: 'xai-...',
     keyDocUrl: 'https://console.x.ai',
-    models: [
-      {
-        id: 'grok-2-latest',
-        name: 'grok-2-latest',
-        group: 'Grok 2',
-        badge: 'Flagship',
-        speed: '~2–4s',
-        description: 'xAI flagship Grok 2 model with state-of-the-art reasoning capabilities.',
-      },
-      {
-        id: 'grok-2-vision-latest',
-        name: 'grok-2-vision-latest',
-        group: 'Grok 2',
-        badge: 'Multimodal',
-        speed: '~3–5s',
-        description: 'Grok 2 multimodal vision and document analysis model.',
-      },
-      {
-        id: 'grok-beta',
-        name: 'grok-beta',
-        group: 'Grok Beta',
-        badge: 'Fast Beta',
-        speed: '~1.5–2s',
-        description: 'High-speed Grok beta development model.',
-      },
-    ],
   },
   custom: {
     id: 'custom',
     name: 'Custom (OpenAI Compatible)',
     shortName: 'Custom',
     baseUrl: 'https://api.together.xyz/v1',
-    defaultModel: 'meta-llama/Llama-3-70b-chat-hf',
+    defaultModel: '',
+    modelPlaceholder: 'e.g. meta-llama/Llama-3-70b-chat-hf',
     keyPlaceholder: 'Enter custom API key...',
     keyDocUrl: 'https://platform.openai.com',
-    models: [],
   },
 };
 
 export const DEFAULT_PROVIDER: ProviderId = 'openrouter';
-const FALLBACK_OR_KEY = typeof atob === 'function'
-  ? atob('c2stb3ItdjEtMzE3YmQ5ZDcwOGRhNGYzZTMzNWM3YzU5Njc0NTE4ODU5YzA3YmI2ZGRhMDM1MjNmYTVlZjc2NTkxMWNlNWM0')
-  : '';
-export const DEFAULT_OPENROUTER_KEY = (import.meta.env?.VITE_OPENROUTER_API_KEY as string) || FALLBACK_OR_KEY;
+export const DEFAULT_OPENROUTER_KEY = (import.meta.env?.VITE_OPENROUTER_API_KEY as string) || '';
 export const OPENROUTER_BASE_URL = PROVIDERS.openrouter.baseUrl;
 
 // Backward-compatible exports
-export const OPENROUTER_MODELS = PROVIDERS.openrouter.models.map((m) => m.id);
-export const DEFAULT_MODEL = PROVIDERS.openrouter.defaultModel;
+export const OPENROUTER_MODELS = ['openrouter/free'];
+export const DEFAULT_MODEL = 'openrouter/free';
 export const FLASH_MODELS = OPENROUTER_MODELS;
-export const GEMINI_MODELS = PROVIDERS.gemini.models.map((m) => m.id);
+export const GEMINI_MODELS = ['gemini-2.5-flash'];
 export type OpenRouterModelId = string;
 export type FlashModelId = string;
 
@@ -354,7 +120,7 @@ const getProviderKeyStorageName = (p: ProviderId) => `utsavops_key_${p}`;
 const getProviderModelStorageName = (p: ProviderId) => `utsavops_model_${p}`;
 
 /**
- * Retrieves the currently active provider ('openrouter' | 'gemini' | 'openai' | 'groq' | 'custom').
+ * Retrieves the currently active provider.
  */
 export function getActiveProvider(): ProviderId {
   if (typeof window !== 'undefined') {
@@ -382,10 +148,7 @@ export function setActiveProvider(provider: ProviderId): void {
  */
 export function validateProviderKey(provider: ProviderId, key?: string | null): { valid: boolean; message?: string } {
   if (!key || key.trim().length === 0) {
-    if (provider === 'openrouter') {
-      return { valid: true }; // default fallback key exists
-    }
-    return { valid: false, message: `Please enter an API key for ${PROVIDERS[provider].name}.` };
+    return { valid: false, message: `Please enter an API key for ${PROVIDERS[provider]?.name || provider}.` };
   }
 
   const trimmed = key.trim();
@@ -427,7 +190,7 @@ export function validateProviderKey(provider: ProviderId, key?: string | null): 
 
 /** Legacy OpenRouter validator alias */
 export function isValidOpenRouterKey(key?: string | null): boolean {
-  return validateProviderKey('openrouter', key).valid && Boolean(key && key.trim().startsWith('sk-or-') && key.trim().length >= 25);
+  return validateProviderKey('openrouter', key).valid;
 }
 
 /**
@@ -435,32 +198,22 @@ export function isValidOpenRouterKey(key?: string | null): boolean {
  */
 export function getProviderApiKey(provider: ProviderId): string {
   if (typeof window !== 'undefined') {
-    // 1. Check provider-specific session key
     const sessionKey = sessionStorage.getItem(getProviderKeyStorageName(provider));
     if (sessionKey && sessionKey.trim().length > 0) {
       return sessionKey.trim();
     }
 
-    // Legacy migration checks
     if (provider === 'openrouter') {
       const legacyOr = sessionStorage.getItem('utsavops_openrouter_key');
       if (legacyOr && isValidOpenRouterKey(legacyOr)) {
         return legacyOr.trim();
       }
     }
-    if (provider === 'gemini') {
-      const legacyGemini = sessionStorage.getItem('utsavops_gemini_key');
-      if (legacyGemini && legacyGemini.trim().length > 10) {
-        return legacyGemini.trim();
-      }
-    }
   }
 
-  // 2. Check Vite environment variables
   if (provider === 'openrouter') {
     const envKey = import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined;
     if (envKey && isValidOpenRouterKey(envKey)) return envKey.trim();
-    return DEFAULT_OPENROUTER_KEY;
   }
   if (provider === 'gemini') {
     const envKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
@@ -503,7 +256,7 @@ export function saveProviderApiKey(provider: ProviderId, key: string): void {
 }
 
 /**
- * Clears the custom API key for a specific provider.
+ * Clears the API key for a specific provider.
  */
 export function clearProviderApiKey(provider: ProviderId): void {
   if (typeof window !== 'undefined') {
@@ -524,12 +277,8 @@ export function getProviderModel(provider: ProviderId): string {
     if (saved && saved.trim().length > 0) {
       return saved.trim();
     }
-    if (provider === 'openrouter') {
-      const legacy = sessionStorage.getItem('utsavops_openrouter_model') || sessionStorage.getItem('utsavops_gemini_model');
-      if (legacy && legacy.trim().length > 0) return legacy.trim();
-    }
   }
-  return PROVIDERS[provider].defaultModel;
+  return PROVIDERS[provider]?.defaultModel || '';
 }
 
 /**
@@ -541,13 +290,12 @@ export function saveProviderModel(provider: ProviderId, model: string): void {
     sessionStorage.setItem(getProviderModelStorageName(provider), trimmed);
     if (provider === 'openrouter') {
       sessionStorage.setItem('utsavops_openrouter_model', trimmed);
-      sessionStorage.setItem('utsavops_gemini_model', trimmed);
     }
   }
 }
 
 /**
- * Retrieves the custom base URL if configured.
+ * Retrieves custom base URL if configured.
  */
 export function getCustomBaseUrl(): string {
   if (typeof window !== 'undefined') {
@@ -567,14 +315,14 @@ export function saveCustomBaseUrl(url: string): void {
 }
 
 /**
- * Active base URL resolver for the active provider.
+ * Active base URL resolver for current provider.
  */
 export function getActiveBaseUrl(): string {
   const provider = getActiveProvider();
   if (provider === 'custom') {
     return getCustomBaseUrl();
   }
-  return PROVIDERS[provider].baseUrl;
+  return PROVIDERS[provider]?.baseUrl || PROVIDERS.openrouter.baseUrl;
 }
 
 /**
@@ -583,10 +331,19 @@ export function getActiveBaseUrl(): string {
 export function getApiKey(): string {
   const provider = getActiveProvider();
   const key = getProviderApiKey(provider);
-  if (!key && provider === 'openrouter') {
-    return DEFAULT_OPENROUTER_KEY;
+  return key ? key.trim() : '';
+}
+
+/**
+ * Returns true if a key is currently configured for the active provider.
+ */
+export function isApiKeyAvailable(): boolean {
+  const provider = getActiveProvider();
+  const key = getApiKey();
+  if (!key || key.trim().length === 0) {
+    return false;
   }
-  return key;
+  return validateProviderKey(provider, key).valid;
 }
 
 /**
@@ -601,24 +358,13 @@ export function isCustomApiKey(): boolean {
   return false;
 }
 
-export function isApiKeyAvailable(): boolean {
-  const provider = getActiveProvider();
-  const key = getApiKey();
-  if (provider === 'openrouter') {
-    return Boolean(key && key.trim().length > 0);
-  }
-  return Boolean(key && key.trim().length > 0 && validateProviderKey(provider, key).valid);
-}
-
-/** Legacy functions preserved for full compatibility */
+/** Legacy aliases preserved for backward compatibility */
 export function saveApiKeyToSession(key: string): void {
-  const provider = getActiveProvider();
-  saveProviderApiKey(provider, key);
+  saveProviderApiKey(getActiveProvider(), key);
 }
 
 export function clearSessionApiKey(): void {
-  const provider = getActiveProvider();
-  clearProviderApiKey(provider);
+  clearProviderApiKey(getActiveProvider());
 }
 
 export function getSelectedModel(): string {
@@ -641,6 +387,9 @@ export function getModelDisplayName(modelId?: string): string {
   const providerId = getActiveProvider();
   const provider = PROVIDERS[providerId] || PROVIDERS.openrouter;
   const model = modelId || getSelectedModel();
+  if (!model) {
+    return `${provider.shortName} (No Model Set)`;
+  }
   return `${provider.shortName} • ${model}`;
 }
 
@@ -648,7 +397,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Extracts clean JSON string by:
- * 1. Stripping <think>...</think> reasoning blocks (DeepSeek R1, Qwen reasoning, etc.)
+ * 1. Stripping <think>...</think> reasoning blocks
  * 2. Stripping markdown code fences (```json ... ```)
  * 3. Extracting outermost { ... }
  * 4. Cleaning trailing commas that break standard JSON.parse
@@ -658,7 +407,7 @@ export function extractJsonFromResponse(raw: string): string {
 
   let cleaned = raw.trim();
 
-  // 1. Strip reasoning/think blocks (DeepSeek R1, Qwen reasoning, etc.)
+  // 1. Strip reasoning/think blocks
   cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
   // 2. Remove markdown code blocks if the entire content is wrapped
@@ -679,14 +428,14 @@ export function extractJsonFromResponse(raw: string): string {
     cleaned = cleaned.substring(firstBrace, lastBrace + 1);
   }
 
-  // 5. Clean trailing commas in JSON (common LLM JSON error: e.g. [1, 2,] or {"a": 1,})
+  // 5. Clean trailing commas in JSON
   cleaned = cleaned.replace(/,\s*([}\]])/g, '$1');
 
   return cleaned.trim();
 }
 
 /**
- * Live test function to verify an API key and model without committing changes.
+ * Live test function to verify an API key and user-typed model without committing changes.
  */
 export async function testProviderConnection(
   provider: ProviderId,
@@ -695,10 +444,15 @@ export async function testProviderConnection(
   customBaseUrl?: string
 ): Promise<{ success: boolean; message: string; elapsedSeconds: number }> {
   const start = Date.now();
-  const apiKey = key.trim() || (provider === 'openrouter' ? DEFAULT_OPENROUTER_KEY : '');
+  const apiKey = key.trim();
 
   if (!apiKey) {
-    return { success: false, message: `API key is required for ${PROVIDERS[provider].name}.`, elapsedSeconds: 0 };
+    return { success: false, message: `Please enter an API key for ${PROVIDERS[provider].name}.`, elapsedSeconds: 0 };
+  }
+
+  const modelName = model.trim() || PROVIDERS[provider].defaultModel;
+  if (!modelName) {
+    return { success: false, message: `Please type a model name to test.`, elapsedSeconds: 0 };
   }
 
   const baseUrl = provider === 'custom' ? (customBaseUrl || getCustomBaseUrl()) : PROVIDERS[provider].baseUrl;
@@ -711,7 +465,7 @@ export async function testProviderConnection(
 
   try {
     const llm = new ChatOpenAI({
-      model: model.trim() || PROVIDERS[provider].defaultModel,
+      model: modelName,
       apiKey: apiKey,
       configuration: {
         baseURL: baseUrl,
@@ -719,7 +473,7 @@ export async function testProviderConnection(
         dangerouslyAllowBrowser: true,
       },
       temperature: 0.1,
-      timeout: 25000, // 25s test timeout
+      timeout: 25000,
     });
 
     const res = await llm.invoke([
@@ -731,9 +485,9 @@ export async function testProviderConnection(
     const text = typeof res.content === 'string' ? res.content : JSON.stringify(res.content);
 
     if (text && text.includes('pong')) {
-      return { success: true, message: `Connected successfully in ${elapsed}s!`, elapsedSeconds: elapsed };
+      return { success: true, message: `Connected to ${modelName} in ${elapsed}s!`, elapsedSeconds: elapsed };
     }
-    return { success: true, message: `Connection confirmed in ${elapsed}s!`, elapsedSeconds: elapsed };
+    return { success: true, message: `Connected to ${modelName} in ${elapsed}s!`, elapsedSeconds: elapsed };
   } catch (err: unknown) {
     const elapsed = Number(((Date.now() - start) / 1000).toFixed(1));
     const msg = err instanceof Error ? err.message : String(err);
@@ -742,7 +496,7 @@ export async function testProviderConnection(
 }
 
 /**
- * Executes an LLM call via LangChain ChatOpenAI targeting the currently selected provider and model.
+ * Executes an LLM call via LangChain ChatOpenAI targeting the selected provider and model.
  */
 export async function callLangChain(
   prompt: string,
@@ -754,10 +508,10 @@ export async function callLangChain(
   const key = getApiKey();
 
   if (!key || key.trim().length === 0) {
-    throw new Error(`API key not configured for ${providerDef.name}. Please open the API Settings to enter your key.`);
+    throw new Error(`API key not configured for ${providerDef.name}. Please open settings to configure.`);
   }
 
-  const modelName = getSelectedModel();
+  const modelName = getSelectedModel() || providerDef.defaultModel;
   const baseUrl = getActiveBaseUrl();
 
   const enrichedPrompt = responseSchema
@@ -801,7 +555,7 @@ export async function callLangChain(
           dangerouslyAllowBrowser: true,
         },
         temperature: 0.2,
-        timeout: 180000, // 3 minutes timeout
+        timeout: 180000,
       });
 
       const result = await llm.invoke(messages);
@@ -822,7 +576,7 @@ export async function callLangChain(
       if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('Authentication')) {
         message = `${providerDef.name} authentication failed (HTTP 401). Please check that your API key is valid.`;
         lastError = message;
-        break; // don't retry auth errors
+        break;
       } else if (errorMsg.includes('429')) {
         message = `${providerDef.name} rate limit reached (HTTP 429). Please wait a few moments or switch models.`;
       } else if (errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503')) {

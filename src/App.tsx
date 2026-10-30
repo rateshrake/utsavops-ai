@@ -25,6 +25,7 @@ import {
   DEFAULT_CRISIS_SCENARIOS,
 } from './data/defaults';
 import ApiKeyModal from './components/ApiKeyModal';
+import NoApiConfirmModal from './components/NoApiConfirmModal';
 import DiscoverySetup from './components/DiscoverySetup';
 import BudgetCrisis from './components/BudgetCrisis';
 import DependencyTimeline from './components/DependencyTimeline';
@@ -47,6 +48,8 @@ const getDaysLeft = (dateStr: string) => {
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('discovery');
   const [apiModalOpen, setApiModalOpen] = useState(false);
+  const [noApiModalOpen, setNoApiModalOpen] = useState(false);
+  const [pendingProfile, setPendingProfile] = useState<EventProfile | null>(null);
   const [apiKeyRefresh, setApiKeyRefresh] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
@@ -62,7 +65,9 @@ const App: React.FC = () => {
 
   const daysLeft = getDaysLeft(profile.date);
   const hasKey = apiKeyRefresh >= 0 && isApiKeyAvailable();
-  const currentModelName = apiKeyRefresh >= 0 ? getModelDisplayName(getSelectedModel()) : 'LangChain • OpenRouter (openrouter/free)';
+  const currentModelName = hasKey
+    ? getModelDisplayName(getSelectedModel())
+    : 'Demo Mode (No API Configured)';
 
   // Auto-refresh API status on mount
   useEffect(() => {
@@ -89,43 +94,50 @@ const App: React.FC = () => {
 
   const handleGenerate = useCallback(
     async (overrideProfile?: EventProfile) => {
-      setIsGenerating(true);
-      setGenError(null);
       const targetProfile = overrideProfile || profile;
       if (overrideProfile) {
         setProfile(overrideProfile);
       }
-      try {
-        if (isApiKeyAvailable()) {
-          try {
-            const plan = await generateFullPlan(targetProfile);
-            setBudgetCategories(plan.budgetCategories);
-            setTimelineTasks(plan.timelineTasks);
-            setCrisisScenarios(plan.crisisScenarios);
-            setPlanSummary(plan.planSummary);
-            setActiveTab('budget');
-            return;
-          } catch (apiErr) {
-            console.warn('[UtsavOps AI] Cloud OpenRouter API error:', apiErr);
-            const msg =
-              apiErr instanceof Error
-                ? apiErr.message
-                : 'OpenRouter AI generation failed. Click Retry to try again.';
-            setGenError(msg);
-            return;
-          }
-        }
 
-        // If no API key configured, use smart demo fallback directly
-        handleGenerateOfflineFallback(targetProfile);
-      } catch (err) {
-        setGenError(err instanceof Error ? err.message : 'AI generation failed. Please try again.');
+      // Check if an API key is configured
+      if (!isApiKeyAvailable()) {
+        setPendingProfile(targetProfile);
+        setNoApiModalOpen(true);
+        return;
+      }
+
+      setIsGenerating(true);
+      setGenError(null);
+      try {
+        const plan = await generateFullPlan(targetProfile);
+        setBudgetCategories(plan.budgetCategories);
+        setTimelineTasks(plan.timelineTasks);
+        setCrisisScenarios(plan.crisisScenarios);
+        setPlanSummary(plan.planSummary);
+        setActiveTab('budget');
+      } catch (apiErr) {
+        console.warn('[UtsavOps AI] Cloud API generation error:', apiErr);
+        const msg =
+          apiErr instanceof Error
+            ? apiErr.message
+            : 'AI plan generation failed. Click Retry or use Demo Mode.';
+        setGenError(msg);
       } finally {
         setIsGenerating(false);
       }
     },
-    [profile, handleGenerateOfflineFallback]
+    [profile]
   );
+
+  const handleConfirmDemo = useCallback(() => {
+    setNoApiModalOpen(false);
+    handleGenerateOfflineFallback(pendingProfile || profile);
+  }, [handleGenerateOfflineFallback, pendingProfile, profile]);
+
+  const handleOpenApiFromPrompt = useCallback(() => {
+    setNoApiModalOpen(false);
+    setApiModalOpen(true);
+  }, []);
 
   const handleLockVendorPrice = useCallback(
     (categoryName: string, vendorName: string, amount: number) => {
@@ -331,6 +343,14 @@ const App: React.FC = () => {
           </p>
         </div>
       </footer>
+
+      {/* No API Key Confirmation Modal */}
+      <NoApiConfirmModal
+        isOpen={noApiModalOpen}
+        onConfirmDemo={handleConfirmDemo}
+        onOpenSettings={handleOpenApiFromPrompt}
+        onClose={() => setNoApiModalOpen(false)}
+      />
 
       {/* API Key Modal */}
       <ApiKeyModal
