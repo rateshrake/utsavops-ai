@@ -13,8 +13,11 @@ import type {
   EventProfile,
   TradeOffStrategy,
 } from '../types/event';
-import { simulateTradeOffs, isApiKeyAvailable } from '../services/geminiService';
-import { DEFAULT_TRADE_OFF_STRATEGIES } from '../data/defaults';
+import {
+  simulateTradeOffs,
+  calculateSmartTradeOffStrategies,
+  isApiKeyAvailable,
+} from '../services/geminiService';
 import { calculateTotalAllocated, calculateTotalActual } from '../utils/budgetLogic';
 import { BudgetOverviewCharts } from './budget/BudgetOverviewCharts';
 import { CategoryBreakdownTable } from './budget/CategoryBreakdownTable';
@@ -50,16 +53,31 @@ export const BudgetCrisis: React.FC<BudgetCrisisProps> = ({
   onBudgetUpdate,
   onApplyRevision,
 }) => {
-  const [tradeOffStrategies, setTradeOffStrategies] = useState<TradeOffStrategy[]>(
-    DEFAULT_TRADE_OFF_STRATEGIES
-  );
   const [activeShockTitle, setActiveShockTitle] = useState<string>(
     '+50 Guests Added & Budget Cut by 10%'
+  );
+  const [tradeOffStrategies, setTradeOffStrategies] = useState<TradeOffStrategy[]>(() =>
+    calculateSmartTradeOffStrategies(profile, budgetCategories, '+50 Guests Added & Budget Cut by 10%')
   );
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
   const [simError, setSimError] = useState<string | null>(null);
   const [appliedStrategyId, setAppliedStrategyId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Keep trade-off strategies dynamically synced whenever profile budget or categories update
+  React.useEffect(() => {
+    setTradeOffStrategies((prev) => {
+      const currentStrategyBudget = prev[0]?.newTotalBudget;
+      const expectedScaledBudget = Math.round(profile.totalBudget * 0.9);
+      if (
+        currentStrategyBudget !== expectedScaledBudget &&
+        currentStrategyBudget !== profile.totalBudget
+      ) {
+        return calculateSmartTradeOffStrategies(profile, budgetCategories, activeShockTitle);
+      }
+      return prev;
+    });
+  }, [profile.totalBudget, profile.guestCount, profile.prioritiesRanked, budgetCategories, activeShockTitle]);
 
   const totalAllocated = calculateTotalAllocated(budgetCategories);
   const totalActual = calculateTotalActual(budgetCategories);
@@ -75,13 +93,17 @@ export const BudgetCrisis: React.FC<BudgetCrisisProps> = ({
         const strategies = await simulateTradeOffs(profile, budgetCategories, description);
         setTradeOffStrategies(strategies);
       } else {
-        setTradeOffStrategies(DEFAULT_TRADE_OFF_STRATEGIES);
+        setTradeOffStrategies(
+          calculateSmartTradeOffStrategies(profile, budgetCategories, description)
+        );
       }
     } catch (err) {
-      console.warn('[UtsavOps AI] Tradeoff simulation API error, falling back to preset strategies:', err);
+      console.warn('[UtsavOps AI] Tradeoff simulation API error, falling back to smart calibrated strategies:', err);
       const msg = err instanceof Error ? err.message : 'Trade-off simulation failed.';
       setSimError(msg);
-      setTradeOffStrategies(DEFAULT_TRADE_OFF_STRATEGIES);
+      setTradeOffStrategies(
+        calculateSmartTradeOffStrategies(profile, budgetCategories, description)
+      );
     } finally {
       setIsSimulating(false);
     }

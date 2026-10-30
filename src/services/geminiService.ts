@@ -54,6 +54,7 @@ export {
 
 export {
   simulateTradeOffs,
+  calculateSmartTradeOffStrategies,
 } from './tradeoffService';
 
 export {

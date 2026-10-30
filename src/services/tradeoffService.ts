@@ -9,7 +9,9 @@ import type {
   TradeOffStrategy,
 } from '../types/event';
 import { callGemini } from './geminiClient';
-import { DEFAULT_TRADE_OFF_STRATEGIES } from '../data/defaults';
+import { calculateSmartTradeOffStrategies } from '../utils/tradeoffLogic';
+
+export { calculateSmartTradeOffStrategies };
 
 const tradeOffSchema = {
   type: 'object',
@@ -150,7 +152,7 @@ RE-ENGINEERING DIRECTIVES:
     const parsed = JSON.parse(raw) as { strategies: TradeOffStrategy[] };
     return parsed.strategies;
   } catch (err) {
-    console.warn('[UtsavOps AI] Live trade-off simulation failed, falling back to preset strategies:', err);
-    return DEFAULT_TRADE_OFF_STRATEGIES;
+    console.warn('[UtsavOps AI] Live trade-off simulation failed, falling back to smart calibrated strategies:', err);
+    return calculateSmartTradeOffStrategies(profile, currentCategories, sanitizedShock);
   }
 }

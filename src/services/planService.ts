@@ -13,6 +13,7 @@ import type {
 } from '../types/event';
 import { callGemini } from './geminiClient';
 import { DEFAULT_PROFILE } from '../data/defaults';
+import { calculateSmartTradeOffStrategies } from '../utils/tradeoffLogic';
 
 const budgetSchema = {
   type: 'object',
@@ -872,10 +873,17 @@ export function generateSmartDemoPlan(profile: EventProfile): GeneratedPlan {
     `Prioritizes ${selectedPriorities[0] || 'Food & Catering'} as non-negotiable core, with a ${contingencyPct}% contingency buffer for complete financial peace of mind. ` +
     `All ${timelineTasks.length} critical-path timeline milestones and pre-mortem contingency protocols are synchronized to ${profile.date}.${clarificationNote}`;
 
+  const tradeOffStrategies = calculateSmartTradeOffStrategies(
+    profile,
+    budgetCategories,
+    '+50 Guests Added & Budget Cut by 10%'
+  );
+
   return {
     planSummary,
     budgetCategories,
     timelineTasks,
     crisisScenarios,
+    tradeOffStrategies,
   };
 }

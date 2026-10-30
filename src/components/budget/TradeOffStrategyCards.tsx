@@ -167,7 +167,7 @@ export const TradeOffStrategyCards: React.FC<TradeOffStrategyCardsProps> = ({
           {/* Friendly explainer for the user */}
           {activeStrategy.newTotalBudget && changedCategories.length > 0 && (
             <div className="text-[11px] text-slate-600 bg-indigo-50/60 p-2.5 rounded-xl border border-indigo-100/80 leading-relaxed">
-              💡 <strong>How the math adds up to {fmt(activeStrategy.newTotalBudget)}:</strong> These {changedCategories.length} adjusted envelopes equal <strong>{fmt(changedCategories.reduce((acc, c) => acc + c.newAmount, 0))}</strong>. The remaining <strong>{fmt(Math.max(0, activeStrategy.newTotalBudget - changedCategories.reduce((acc, c) => acc + c.newAmount, 0)))}</strong> stays in your protected categories (Food & Catering ₹2.4L, Venue ₹1.8L, Photography, etc.).
+              💡 <strong>How the math adds up to {fmt(activeStrategy.newTotalBudget)}:</strong> These {changedCategories.length} adjusted envelopes equal <strong>{fmt(changedCategories.reduce((acc, c) => acc + c.newAmount, 0))}</strong>. The remaining <strong>{fmt(Math.max(0, activeStrategy.newTotalBudget - changedCategories.reduce((acc, c) => acc + c.newAmount, 0)))}</strong> stays in your protected categories.
             </div>
           )}
 
