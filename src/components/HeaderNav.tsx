@@ -5,7 +5,7 @@
 // =============================================================================
 
 import React from 'react';
-import { Sparkles, Key, ChevronRight } from 'lucide-react';
+import { Key, ChevronRight } from 'lucide-react';
 
 export type TabId = 'discovery' | 'budget' | 'timeline' | 'vendor';
 
@@ -49,11 +49,11 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
         <div className="flex items-center justify-between h-16 sm:h-18 gap-4">
           {/* Left: Clean Brand Logo */}
           <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-emerald-500 p-0.5 shrink-0 shadow-sm flex items-center justify-center">
-              <div className="w-full h-full bg-white rounded-[10px] flex items-center justify-center">
-                <Sparkles size={18} className="text-indigo-600" />
-              </div>
-            </div>
+            <img
+              src="/logo.png"
+              alt="UtsavAI Logo"
+              className="w-9 h-9 rounded-xl object-contain shadow-xs bg-white border border-slate-100"
+            />
             <span className="shrink-0 font-bold text-lg tracking-tight text-slate-900">
               Utsav<span className="text-indigo-600">AI</span>
             </span>
