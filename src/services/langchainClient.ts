@@ -12,7 +12,7 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
 
-export type ProviderId = 'openrouter' | 'gemini' | 'openai' | 'groq' | 'custom';
+export type ProviderId = 'openrouter' | 'gemini' | 'openai' | 'groq' | 'xai' | 'custom';
 
 export interface ModelOption {
   id: string;
@@ -20,6 +20,7 @@ export interface ModelOption {
   badge?: string;
   speed?: string;
   description?: string;
+  group?: string;
 }
 
 export interface ProviderDefinition {
@@ -50,6 +51,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
       {
         id: 'openrouter/free',
         name: 'OpenRouter Free',
+        group: 'Free',
         badge: 'Free Router',
         speed: '~20–50s',
         description: 'Auto-routes across free models (DeepSeek, Llama, Mistral, Nemotron) with zero credit requirement.',
@@ -57,6 +59,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
       {
         id: 'google/gemini-2.0-flash-exp:free',
         name: 'Gemini 2.0 Flash (Free)',
+        group: 'Google',
         badge: 'Fast Free',
         speed: '~4–8s',
         description: 'Google Gemini 2.0 Flash experimental model routed through OpenRouter.',
@@ -64,6 +67,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
       {
         id: 'deepseek/deepseek-chat',
         name: 'DeepSeek V3',
+        group: 'DeepSeek',
         badge: 'Popular',
         speed: '~3–6s',
         description: 'DeepSeek V3 flagship 671B model with exceptional reasoning at low cost.',
@@ -71,6 +75,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
       {
         id: 'openai/gpt-4o-mini',
         name: 'GPT-4o Mini',
+        group: 'OpenAI',
         badge: 'High Precision',
         speed: '~3–5s',
         description: 'Affordable, low-latency version of GPT-4o with sharp structured output.',
@@ -78,6 +83,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
       {
         id: 'meta-llama/llama-3.3-70b-instruct',
         name: 'Llama 3.3 70B Instruct',
+        group: 'Meta',
         badge: 'Open Weights',
         speed: '~5–9s',
         description: 'Meta flagship 70B open model for structured planning and logic.',
@@ -97,6 +103,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
       {
         id: 'gemini-2.5-flash',
         name: 'Gemini 2.5 Flash',
+        group: 'Gemini 2.5',
         badge: 'Recommended',
         speed: '~2–4s',
         description: 'Next-gen Google Flash model with top-tier latency and JSON schema adherence.',
@@ -104,6 +111,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
       {
         id: 'gemini-2.0-flash',
         name: 'Gemini 2.0 Flash',
+        group: 'Gemini 2.0',
         badge: 'Ultra Fast',
         speed: '~1.5–3s',
         description: 'High throughput, low-latency multimodal model with generous rate limits.',
@@ -111,6 +119,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
       {
         id: 'gemini-1.5-flash',
         name: 'Gemini 1.5 Flash',
+        group: 'Gemini 1.5',
         badge: 'Stable',
         speed: '~3–5s',
         description: 'Reliable high-speed production model with broad availability.',
@@ -118,6 +127,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
       {
         id: 'gemini-1.5-pro',
         name: 'Gemini 1.5 Pro',
+        group: 'Gemini 1.5',
         badge: 'Deep Reasoning',
         speed: '~5–8s',
         description: 'Maximum depth for complex celebration logistics and budget reconciliation.',
@@ -137,6 +147,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
       {
         id: 'gpt-4o-mini',
         name: 'GPT-4o Mini',
+        group: 'GPT-4o',
         badge: 'Recommended',
         speed: '~2–4s',
         description: 'Best price-to-performance model with precise JSON schema following.',
@@ -144,6 +155,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
       {
         id: 'gpt-4o',
         name: 'GPT-4o',
+        group: 'GPT-4o',
         badge: 'Flagship',
         speed: '~4–7s',
         description: 'Full flagship model for unmatched creative nuances in Indian celebrations.',
@@ -151,6 +163,7 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
       {
         id: 'gpt-3.5-turbo',
         name: 'GPT-3.5 Turbo',
+        group: 'Legacy',
         badge: 'Legacy',
         speed: '~2–3s',
         description: 'High-speed legacy standard model for fast drafting.',
@@ -159,34 +172,150 @@ export const PROVIDERS: Record<ProviderId, ProviderDefinition> = {
   },
   groq: {
     id: 'groq',
-    name: 'Groq',
+    name: 'Groq (Grok APIs)',
     shortName: 'Groq',
     baseUrl: 'https://api.groq.com/openai/v1',
-    defaultModel: 'llama-3.3-70b-versatile',
+    defaultModel: 'openai/gpt-oss-120b',
     keyPrefix: 'gsk_',
     keyPlaceholder: 'gsk_...',
     keyDocUrl: 'https://console.groq.com/keys',
     models: [
+      // Meta Group (Matching user screenshot)
+      {
+        id: 'meta-llama/llama-prompt-guard-2-22m',
+        name: 'meta-llama/llama-prompt-guard-2-22m',
+        group: 'Meta',
+        badge: 'Safety',
+        speed: '~0.2s',
+        description: 'Meta prompt safety and injection classifier model (22M).',
+      },
+      {
+        id: 'meta-llama/llama-prompt-guard-2-86m',
+        name: 'meta-llama/llama-prompt-guard-2-86m',
+        group: 'Meta',
+        badge: 'Safety',
+        speed: '~0.3s',
+        description: 'Meta prompt safety and injection classifier model (86M).',
+      },
       {
         id: 'llama-3.3-70b-versatile',
-        name: 'Llama 3.3 70B Versatile',
-        badge: 'Blazing Fast',
+        name: 'llama-3.3-70b-versatile',
+        group: 'Meta',
+        badge: 'Versatile',
         speed: '~1–2s',
-        description: 'Near-instantaneous inference powered by Groq LPU processing units.',
+        description: 'Meta flagship 70B open weights model optimized for JSON and execution plans.',
       },
       {
         id: 'llama-3.1-8b-instant',
-        name: 'Llama 3.1 8B Instant',
+        name: 'llama-3.1-8b-instant',
+        group: 'Meta',
         badge: 'Instant (<1s)',
+        speed: '~0.6s',
+        description: 'Sub-second response generation on Groq LPUs.',
+      },
+
+      // OpenAI Group (Matching user screenshot)
+      {
+        id: 'openai/gpt-oss-120b',
+        name: 'openai/gpt-oss-120b',
+        group: 'OpenAI',
+        badge: 'Selected',
+        speed: '~1–2s',
+        description: 'OpenAI open-source 120B model running on ultra-fast Groq LPU hardware.',
+      },
+      {
+        id: 'openai/gpt-oss-20b',
+        name: 'openai/gpt-oss-20b',
+        group: 'OpenAI',
+        badge: 'Fast',
         speed: '~0.8s',
-        description: 'Instant response generation ideal for quick budget what-if recalculations.',
+        description: 'OpenAI open-source 20B efficient model.',
+      },
+      {
+        id: 'openai/gpt-oss-safeguard-20b',
+        name: 'openai/gpt-oss-safeguard-20b',
+        group: 'OpenAI',
+        badge: 'Guardrail',
+        speed: '~0.8s',
+        description: 'OpenAI safeguard 20B moderation and alignment classifier.',
+      },
+      {
+        id: 'whisper-large-v3',
+        name: 'whisper-large-v3',
+        group: 'OpenAI',
+        badge: 'Audio',
+        speed: '~0.5s',
+        description: 'OpenAI speech recognition model hosted on Groq.',
+      },
+      {
+        id: 'whisper-large-v3-turbo',
+        name: 'whisper-large-v3-turbo',
+        group: 'OpenAI',
+        badge: 'Audio Turbo',
+        speed: '~0.3s',
+        description: 'High-speed transcription model on Groq.',
+      },
+
+      // DeepSeek & Qwen Reasoning Group
+      {
+        id: 'deepseek-r1-distill-llama-70b',
+        name: 'deepseek-r1-distill-llama-70b',
+        group: 'DeepSeek',
+        badge: 'Reasoning',
+        speed: '~2s',
+        description: 'DeepSeek R1 reasoning architecture distilled into 70B Llama.',
+      },
+      {
+        id: 'qwen-qwq-32b',
+        name: 'qwen-qwq-32b',
+        group: 'Qwen',
+        badge: 'Reasoning',
+        speed: '~1.5s',
+        description: 'Qwen advanced mathematical reasoning model on Groq.',
       },
       {
         id: 'mixtral-8x7b-32768',
-        name: 'Mixtral 8x7B',
+        name: 'mixtral-8x7b-32768',
+        group: 'Mistral',
         badge: 'MoE',
         speed: '~1.5s',
         description: 'Mixture of Experts architecture balancing speed and nuanced vendor analysis.',
+      },
+    ],
+  },
+  xai: {
+    id: 'xai',
+    name: 'xAI (Grok)',
+    shortName: 'Grok',
+    baseUrl: 'https://api.x.ai/v1',
+    defaultModel: 'grok-2-latest',
+    keyPrefix: 'xai-',
+    keyPlaceholder: 'xai-...',
+    keyDocUrl: 'https://console.x.ai',
+    models: [
+      {
+        id: 'grok-2-latest',
+        name: 'grok-2-latest',
+        group: 'Grok 2',
+        badge: 'Flagship',
+        speed: '~2–4s',
+        description: 'xAI flagship Grok 2 model with state-of-the-art reasoning capabilities.',
+      },
+      {
+        id: 'grok-2-vision-latest',
+        name: 'grok-2-vision-latest',
+        group: 'Grok 2',
+        badge: 'Multimodal',
+        speed: '~3–5s',
+        description: 'Grok 2 multimodal vision and document analysis model.',
+      },
+      {
+        id: 'grok-beta',
+        name: 'grok-beta',
+        group: 'Grok Beta',
+        badge: 'Fast Beta',
+        speed: '~1.5–2s',
+        description: 'High-speed Grok beta development model.',
       },
     ],
   },
@@ -272,8 +401,13 @@ export function validateProviderKey(provider: ProviderId, key?: string | null): 
       }
       return { valid: true };
     case 'groq':
-      if (!trimmed.startsWith('gsk_') || trimmed.length < 20) {
-        return { valid: false, message: 'Groq keys must start with "gsk_" and be at least 20 characters.' };
+      if (trimmed.length < 15) {
+        return { valid: false, message: 'Groq API keys should be at least 15 characters (starts with gsk_).' };
+      }
+      return { valid: true };
+    case 'xai':
+      if (trimmed.length < 15) {
+        return { valid: false, message: 'xAI API keys should be at least 15 characters (starts with xai-).' };
       }
       return { valid: true };
     case 'gemini':
@@ -338,6 +472,10 @@ export function getProviderApiKey(provider: ProviderId): string {
   }
   if (provider === 'groq') {
     const envKey = import.meta.env.VITE_GROQ_API_KEY as string | undefined;
+    if (envKey && envKey.trim().length > 0) return envKey.trim();
+  }
+  if (provider === 'xai') {
+    const envKey = import.meta.env.VITE_XAI_API_KEY as string | undefined;
     if (envKey && envKey.trim().length > 0) return envKey.trim();
   }
 

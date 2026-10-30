@@ -1,14 +1,14 @@
 // =============================================================================
 // UtsavAI — Bring Your Own Key (BYOK) & Model Settings Modal
-// Supports: OpenRouter (Default pre-configured), Google Gemini, OpenAI, Groq, Custom
+// Supports: OpenRouter (Default pre-configured), Google Gemini, OpenAI, Groq (Grok APIs), xAI (Grok), Custom
 // Allows users to:
 // 1. Choose Provider
 // 2. Paste their own API key (or use default OpenRouter key)
-// 3. Choose from curated models or enter any custom model ID
+// 3. Directly type ANY model name OR pick from categorized lists (Meta, OpenAI, etc.)
 // 4. Test live connection before saving
 // =============================================================================
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   X,
   Key,
@@ -25,10 +25,12 @@ import {
   ExternalLink,
   Loader2,
   Check,
+  Edit3,
 } from 'lucide-react';
 import {
   PROVIDERS,
   type ProviderId,
+  type ModelOption,
   getActiveProvider,
   setActiveProvider,
   getProviderApiKey,
@@ -54,8 +56,6 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
   const [selectedProvider, setSelectedProvider] = useState<ProviderId>(() => getActiveProvider());
   const [inputKey, setInputKey] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('');
-  const [customModelInput, setCustomModelInput] = useState<string>('');
-  const [isUsingCustomModel, setIsUsingCustomModel] = useState<boolean>(false);
   const [customBaseUrl, setCustomBaseUrl] = useState<string>('');
   const [showKey, setShowKey] = useState<boolean>(false);
   const [saved, setSaved] = useState<boolean>(false);
@@ -83,18 +83,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
     setInputKey(key);
 
     const model = getProviderModel(providerId);
-    const providerDef = PROVIDERS[providerId];
-    const isCurated = providerDef.models.some((m) => m.id === model);
-
-    if (isCurated) {
-      setSelectedModel(model);
-      setIsUsingCustomModel(false);
-      setCustomModelInput('');
-    } else {
-      setSelectedModel(model);
-      setIsUsingCustomModel(true);
-      setCustomModelInput(model);
-    }
+    setSelectedModel(model || PROVIDERS[providerId].defaultModel);
 
     if (providerId === 'custom') {
       setCustomBaseUrl(getCustomBaseUrl());
@@ -104,12 +93,29 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
     setTestResult(null);
   };
 
-  if (!isOpen) return null;
-
   const currentProviderDef = PROVIDERS[selectedProvider];
   const isDefaultOpenRouter =
     selectedProvider === 'openrouter' &&
     (!inputKey || inputKey.trim() === DEFAULT_OPENROUTER_KEY || inputKey.trim() === '');
+
+  // Group models by group name (e.g. Meta, OpenAI, DeepSeek, Google, etc.)
+  const groupedModels = useMemo(() => {
+    const groups: Record<string, ModelOption[]> = {};
+    for (const m of currentProviderDef.models) {
+      const g = m.group || 'Models';
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(m);
+    }
+    return groups;
+  }, [currentProviderDef]);
+
+  const isModelInCuratedList = useMemo(() => {
+    return currentProviderDef.models.some(
+      (m) => m.id.toLowerCase() === selectedModel.trim().toLowerCase()
+    );
+  }, [currentProviderDef, selectedModel]);
+
+  if (!isOpen) return null;
 
   const handleProviderSelect = (pId: ProviderId) => {
     setSelectedProvider(pId);
@@ -129,30 +135,18 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
 
   const handleModelSelect = (mId: string) => {
     setSelectedModel(mId);
-    setIsUsingCustomModel(false);
     setTestResult(null);
   };
 
-  const handleCustomModelToggle = (enable: boolean) => {
-    setIsUsingCustomModel(enable);
-    if (enable) {
-      setSelectedModel(customModelInput.trim() || currentProviderDef.defaultModel);
-    } else {
-      setSelectedModel(currentProviderDef.defaultModel);
-    }
-    setTestResult(null);
-  };
-
-  const handleCustomModelInputChange = (val: string) => {
-    setCustomModelInput(val);
-    setSelectedModel(val.trim());
+  const handleModelInputChange = (val: string) => {
+    setSelectedModel(val);
     setTestResult(null);
   };
 
   const handleTestConnection = async () => {
     setIsTesting(true);
     setTestResult(null);
-    const modelToTest = isUsingCustomModel ? customModelInput.trim() : selectedModel;
+    const modelToTest = selectedModel.trim() || currentProviderDef.defaultModel;
     const res = await testProviderConnection(selectedProvider, inputKey, modelToTest, customBaseUrl);
     setIsTesting(false);
     setTestResult(res);
@@ -176,10 +170,8 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
       saveProviderApiKey(selectedProvider, inputKey.trim());
     }
 
-    // 4. Persist Model
-    const finalModel = isUsingCustomModel && customModelInput.trim().length > 0
-      ? customModelInput.trim()
-      : selectedModel || currentProviderDef.defaultModel;
+    // 4. Persist Model (user-typed or picked)
+    const finalModel = selectedModel.trim() || currentProviderDef.defaultModel;
     saveProviderModel(selectedProvider, finalModel);
 
     // 5. Persist Custom Base URL if applicable
@@ -204,8 +196,6 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
     setSelectedProvider('openrouter');
     setInputKey('');
     setSelectedModel('openrouter/free');
-    setIsUsingCustomModel(false);
-    setCustomModelInput('');
     setValidationError(null);
     setTestResult({
       success: true,
@@ -246,7 +236,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
               </span>
             </div>
             <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              Choose your AI provider, paste your API key, and select any model. Default pre-configured OpenRouter is always available.
+              Choose your AI provider, paste your API key, and select or type any model.
             </p>
           </div>
         </div>
@@ -258,7 +248,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
             <span>1. Select AI Provider</span>
           </label>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2" role="radiogroup" aria-label="Select AI Provider">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" role="radiogroup" aria-label="Select AI Provider">
             {/* OpenRouter */}
             <button
               type="button"
@@ -281,6 +271,28 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
               </div>
             </button>
 
+            {/* Groq (Grok APIs) */}
+            <button
+              type="button"
+              onClick={() => handleProviderSelect('groq')}
+              className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
+                selectedProvider === 'groq'
+                  ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs'
+                  : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200'
+              }`}
+            >
+              <div className="flex items-center justify-between w-full">
+                <Zap size={18} className={selectedProvider === 'groq' ? 'text-amber-500' : 'text-slate-500'} />
+                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">
+                  LPU Fast
+                </span>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-slate-900">Groq (Grok APIs)</p>
+                <p className="text-[10px] text-slate-500">Meta & OpenAI Models</p>
+              </div>
+            </button>
+
             {/* Google Gemini */}
             <button
               type="button"
@@ -293,8 +305,8 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
             >
               <Sparkles size={18} className={selectedProvider === 'gemini' ? 'text-indigo-600' : 'text-slate-500'} />
               <div>
-                <p className="text-xs font-bold text-slate-900">Gemini</p>
-                <p className="text-[10px] text-slate-500">Google AI Studio</p>
+                <p className="text-xs font-bold text-slate-900">Google Gemini</p>
+                <p className="text-[10px] text-slate-500">Flash 2.5 & Pro</p>
               </div>
             </button>
 
@@ -315,20 +327,20 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
               </div>
             </button>
 
-            {/* Groq */}
+            {/* xAI (Grok) */}
             <button
               type="button"
-              onClick={() => handleProviderSelect('groq')}
+              onClick={() => handleProviderSelect('xai')}
               className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
-                selectedProvider === 'groq'
+                selectedProvider === 'xai'
                   ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs'
                   : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200'
               }`}
             >
-              <Zap size={18} className={selectedProvider === 'groq' ? 'text-amber-500' : 'text-slate-500'} />
+              <Zap size={18} className={selectedProvider === 'xai' ? 'text-indigo-600' : 'text-slate-500'} />
               <div>
-                <p className="text-xs font-bold text-slate-900">Groq</p>
-                <p className="text-[10px] text-slate-500">Ultra-fast LPU</p>
+                <p className="text-xs font-bold text-slate-900">xAI (Grok)</p>
+                <p className="text-[10px] text-slate-500">Grok 2 & Vision</p>
               </div>
             </button>
 
@@ -344,8 +356,8 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
             >
               <Layers size={18} className={selectedProvider === 'custom' ? 'text-indigo-600' : 'text-slate-500'} />
               <div>
-                <p className="text-xs font-bold text-slate-900">Custom</p>
-                <p className="text-[10px] text-slate-500">Any OpenAI URL</p>
+                <p className="text-xs font-bold text-slate-900">Custom Endpoint</p>
+                <p className="text-[10px] text-slate-500">Ollama / Together</p>
               </div>
             </button>
           </div>
@@ -446,102 +458,124 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
           </div>
         </div>
 
-        {/* STEP 3: MODEL SELECTION */}
+        {/* STEP 3: MODEL SELECTION & TYPING */}
         <div className="space-y-3 pt-2 border-t border-slate-100">
           <div className="flex items-center justify-between">
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
               <Cpu size={13} className="text-indigo-600" />
-              <span>3. Choose or Custom Model</span>
+              <span>3. Model Selection</span>
             </label>
-
-            {/* Custom Model Toggle */}
-            <label className="flex items-center gap-2 cursor-pointer text-xs text-indigo-700 font-medium select-none">
-              <input
-                type="checkbox"
-                checked={isUsingCustomModel}
-                onChange={(e) => handleCustomModelToggle(e.target.checked)}
-                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-              />
-              <span>Type custom model name</span>
-            </label>
+            <span className="text-[11px] text-slate-500 flex items-center gap-1">
+              <Edit3 size={11} className="text-indigo-600" />
+              <span>Type custom model or select below</span>
+            </span>
           </div>
 
-          {/* Curated Models Grid (when not custom) */}
-          {!isUsingCustomModel && currentProviderDef.models.length > 0 && (
-            <div className="space-y-2" role="radiogroup" aria-label="Curated models">
-              {currentProviderDef.models.map((m) => {
-                const isSelected = selectedModel === m.id;
-                return (
-                  <div
-                    key={m.id}
-                    onClick={() => handleModelSelect(m.id)}
-                    role="radio"
-                    aria-checked={isSelected}
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleModelSelect(m.id);
-                      }
-                    }}
-                    className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 select-none ${
-                      isSelected
-                        ? 'bg-indigo-50/90 border-indigo-500 ring-1 ring-indigo-500/30 shadow-xs'
-                        : 'bg-slate-50 hover:bg-slate-100/90 border-slate-200'
-                    }`}
-                  >
-                    <div
-                      className={`w-4 h-4 rounded-full border mt-0.5 flex items-center justify-center shrink-0 transition-colors ${
-                        isSelected ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300 bg-white'
-                      }`}
-                    >
-                      {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs sm:text-sm font-bold text-slate-900">{m.name}</span>
-                        {m.badge && (
-                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
-                            {m.badge}
-                          </span>
-                        )}
-                        {m.speed && (
-                          <span className="text-[11px] font-mono text-slate-500 ml-auto flex items-center gap-1 font-semibold">
-                            <Zap size={10} className="text-amber-500" />
-                            <span>{m.speed}</span>
-                          </span>
-                        )}
-                      </div>
-                      {m.description && (
-                        <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                          {m.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Custom Model Input (when toggle is checked or no curated models) */}
-          {(isUsingCustomModel || currentProviderDef.models.length === 0) && (
-            <div className="space-y-1.5 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
-              <label htmlFor="custom-model-id-input" className="block text-xs font-semibold text-slate-700">
-                Custom Model Identifier:
+          {/* DIRECT TYPEABLE MODEL INPUT */}
+          <div className="space-y-1.5 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+            <div className="flex items-center justify-between">
+              <label htmlFor="model-type-input" className="block text-xs font-semibold text-slate-700">
+                Active Model Identifier:
               </label>
+              {!isModelInCuratedList && selectedModel.trim().length > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200">
+                  Custom Model
+                </span>
+              )}
+            </div>
+
+            <div className="relative">
               <input
-                id="custom-model-id-input"
+                id="model-type-input"
                 type="text"
-                value={customModelInput}
-                onChange={(e) => handleCustomModelInputChange(e.target.value)}
+                value={selectedModel}
+                onChange={(e) => handleModelInputChange(e.target.value)}
                 placeholder={currentProviderDef.defaultModel}
-                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm font-mono shadow-xs"
+                list="model-suggestions-list"
+                className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm font-mono shadow-xs font-medium"
               />
-              <p className="text-[11px] text-slate-500">
-                Enter the exact model string (e.g. <code className="bg-slate-200/80 px-1 py-0.5 rounded text-slate-800 font-mono">gemini-2.5-flash</code>, <code className="bg-slate-200/80 px-1 py-0.5 rounded text-slate-800 font-mono">gpt-4o-mini</code>, <code className="bg-slate-200/80 px-1 py-0.5 rounded text-slate-800 font-mono">deepseek/deepseek-r1</code>).
-              </p>
+              <datalist id="model-suggestions-list">
+                {currentProviderDef.models.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} {m.group ? `(${m.group})` : ''}
+                  </option>
+                ))}
+              </datalist>
+            </div>
+
+            <p className="text-[11px] text-slate-500 leading-snug">
+              You can type <strong>any model string</strong> supported by {currentProviderDef.name} (e.g. <code className="bg-slate-200/80 px-1 py-0.5 rounded font-mono text-slate-800">openai/gpt-oss-120b</code>, <code className="bg-slate-200/80 px-1 py-0.5 rounded font-mono text-slate-800">meta-llama/llama-prompt-guard-2-86m</code>), or pick one from the list below:
+            </p>
+          </div>
+
+          {/* GROUPED MODEL PICKER LIST (Matching Screenshot Style) */}
+          {currentProviderDef.models.length > 0 && (
+            <div className="space-y-3 pt-1 max-h-60 overflow-y-auto pr-1">
+              {Object.entries(groupedModels).map(([groupName, groupModels]) => (
+                <div key={groupName} className="space-y-1.5">
+                  {/* Category Header with Divider */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{groupName}</span>
+                    <div className="flex-1 h-px bg-slate-200" />
+                  </div>
+
+                  {/* Model Items */}
+                  <div className="space-y-1">
+                    {groupModels.map((m) => {
+                      const isSelected = selectedModel.trim().toLowerCase() === m.id.toLowerCase();
+                      return (
+                        <div
+                          key={m.id}
+                          onClick={() => handleModelSelect(m.id)}
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              handleModelSelect(m.id);
+                            }
+                          }}
+                          className={`px-3.5 py-2.5 rounded-xl border text-xs font-mono transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                            isSelected
+                              ? 'bg-slate-900 text-white border-slate-900 shadow-xs'
+                              : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-semibold truncate">{m.id}</span>
+                            {m.badge && (
+                              <span
+                                className={`text-[9px] font-sans font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                  isSelected
+                                    ? 'bg-slate-800 text-slate-200'
+                                    : 'bg-slate-100 text-slate-600'
+                                }`}
+                              >
+                                {m.badge}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {m.speed && (
+                              <span
+                                className={`text-[10px] font-semibold ${
+                                  isSelected ? 'text-slate-300' : 'text-slate-400'
+                                }`}
+                              >
+                                {m.speed}
+                              </span>
+                            )}
+                            {isSelected && (
+                              <Check size={16} className="text-white shrink-0 stroke-[2.5]" />
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
