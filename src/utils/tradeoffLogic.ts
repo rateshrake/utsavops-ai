@@ -10,11 +10,16 @@ import type {
   TradeOffStrategy,
   CategoryAdjustment,
 } from '../types/event';
+import { TRADEOFF_CUT_RATES, CRISIS_SCALING } from '../constants/budgetWeights';
 
-const fmtINR = (n: number) => `₹${n.toLocaleString('en-IN')}`;
+const fmtINR = (n: number): string => `₹${n.toLocaleString('en-IN')}`;
 
 /**
- * Checks if a category name matches a priority keyword (case-insensitive)
+ * Checks if a category name matches a priority keyword (case-insensitive).
+ *
+ * @param categoryName - The name of the budget category to inspect (e.g. "Catering & Food").
+ * @param priorityName - The client's ranked priority name (e.g. "Food & Catering").
+ * @returns True if the category matches the priority domain keywords.
  */
 function matchPriority(categoryName: string, priorityName?: string): boolean {
   if (!priorityName) return false;
@@ -31,6 +36,12 @@ function matchPriority(categoryName: string, priorityName?: string): boolean {
 
 /**
  * Dynamically computes 3 trade-off strategies scaled to the user's REAL event parameters.
+ * Guarantees mathematical budget integrity where sum(newAmount) strictly equals newTotalBudget.
+ *
+ * @param profile - Event profile containing budget cap, headcount, occasion, and ranked priorities.
+ * @param categories - Current allocated budget categories to adjust.
+ * @param shockDescription - Description of the constraint shock (e.g. "+50 Guests Added & Budget Cut by 10%").
+ * @returns Array of 3 distinct, mathematically balanced TradeOffStrategy objects.
  */
 export function calculateSmartTradeOffStrategies(
   profile: EventProfile,
@@ -54,7 +65,9 @@ export function calculateSmartTradeOffStrategies(
     desc.includes('constraint') ||
     desc.includes('shrink');
 
-  const newTotalBudget = hasBudgetCut ? Math.round(baseBudget * 0.9) : baseBudget;
+  const newTotalBudget = hasBudgetCut
+    ? Math.round(baseBudget * (1 - TRADEOFF_CUT_RATES.BUDGET_SHOCK_PCT))
+    : baseBudget;
 
   // 2. Determine shock impact on guest count
   const hasGuestSurge =
@@ -64,7 +77,9 @@ export function calculateSmartTradeOffStrategies(
     desc.includes('attendance surge');
 
   const surgeAmount =
-    guestCount <= 30 ? Math.max(5, Math.round(guestCount * 0.3)) : 50;
+    guestCount <= 30
+      ? Math.max(5, Math.round(guestCount * CRISIS_SCALING.GUEST_SURGE_SMALL_EVENT_PCT))
+      : 50;
   const newGuestCount = hasGuestSurge ? guestCount + surgeAmount : guestCount;
 
   // 3. Determine shock impact on event date
@@ -128,7 +143,14 @@ export function calculateSmartTradeOffStrategies(
   const topCatIndex = workingCats.findIndex((c) => matchPriority(c.name, topPriorityName));
   const topCat = topCatIndex !== -1 ? workingCats[topCatIndex] : workingCats[0];
 
-  // Helper to reconcile sum to newTotalBudget
+  /**
+   * Reconciles envelope allocations so their arithmetic sum exactly matches targetTotal.
+   * Offsets any rounding drift against the contingency envelope or last non-primary category.
+   *
+   * @param amounts - Array of allocated amounts across envelopes.
+   * @param targetTotal - Target total budget to match exactly.
+   * @returns Adjusted amounts strictly summing to targetTotal.
+   */
   const reconcileEnvelopes = (amounts: number[], targetTotal: number): number[] => {
     const currentSum = amounts.reduce((a, b) => a + b, 0);
     const diff = targetTotal - currentSum;
@@ -205,12 +227,12 @@ export function calculateSmartTradeOffStrategies(
 
   // =========================================================================
   // STRATEGY 2: Value Engineering & Unit Optimization
-  // Modest 5–8% optimization across core services with live counters.
+  // Modest optimization across core services with live counters.
   // =========================================================================
   const s2Amounts: number[] = workingCats.map((cat, idx) => {
     const isTop = idx === (topCatIndex !== -1 ? topCatIndex : 0);
-    // Top category takes a tiny 4% haircut, others take a proportional cut
-    const cutRate = isTop ? 0.04 : 0.12;
+    // Top category takes a tiny haircut, others take a proportional cut
+    const cutRate = isTop ? TRADEOFF_CUT_RATES.TOP_CAT_HAIRCUT : TRADEOFF_CUT_RATES.OTHER_CAT_HAIRCUT;
     return Math.max(0, Math.round(cat.allocatedAmount * (1 - cutRate)));
   });
 
@@ -252,7 +274,7 @@ export function calculateSmartTradeOffStrategies(
   // STRATEGY 3: Balanced Proportional Sharing (Hybrid Harmony)
   // Distributes adjustments symmetrically across all categories.
   // =========================================================================
-  const ratio = currentTotal > 0 ? newTotalBudget / currentTotal : 0.9;
+  const ratio = currentTotal > 0 ? newTotalBudget / currentTotal : TRADEOFF_CUT_RATES.DEFAULT_FALLBACK_RATIO;
   const s3Amounts: number[] = workingCats.map((cat) =>
     Math.round(cat.allocatedAmount * ratio)
   );

@@ -30,7 +30,7 @@ const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const fmtShort = (n: number) =>
   Math.abs(n) >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : `₹${(n / 1000).toFixed(0)}K`;
 
-export const TradeOffStrategyCards: React.FC<TradeOffStrategyCardsProps> = ({
+export const TradeOffStrategyCards: React.FC<TradeOffStrategyCardsProps> = React.memo(({
   strategies,
   activeShockTitle,
   onApplyStrategy,
@@ -264,4 +264,5 @@ export const TradeOffStrategyCards: React.FC<TradeOffStrategyCardsProps> = ({
       </div>
     </div>
   );
-};
+});
+TradeOffStrategyCards.displayName = 'TradeOffStrategyCards';

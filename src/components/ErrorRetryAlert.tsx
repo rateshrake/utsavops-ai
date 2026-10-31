@@ -18,7 +18,7 @@ interface ErrorRetryAlertProps {
   isRetrying?: boolean;
 }
 
-export const ErrorRetryAlert: React.FC<ErrorRetryAlertProps> = ({
+export const ErrorRetryAlert: React.FC<ErrorRetryAlertProps> = React.memo(({
   error,
   onRetry,
   onDismiss,
@@ -128,4 +128,5 @@ export const ErrorRetryAlert: React.FC<ErrorRetryAlertProps> = ({
       </div>
     </div>
   );
-};
+});
+ErrorRetryAlert.displayName = 'ErrorRetryAlert';

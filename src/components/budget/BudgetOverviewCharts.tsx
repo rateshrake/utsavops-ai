@@ -25,7 +25,7 @@ interface BudgetOverviewChartsProps {
 
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
-export const BudgetOverviewCharts: React.FC<BudgetOverviewChartsProps> = ({
+export const BudgetOverviewCharts: React.FC<BudgetOverviewChartsProps> = React.memo(({
   categories,
   totalBudget,
   totalAllocated,
@@ -221,4 +221,5 @@ export const BudgetOverviewCharts: React.FC<BudgetOverviewChartsProps> = ({
       </div>
     </div>
   );
-};
+});
+BudgetOverviewCharts.displayName = 'BudgetOverviewCharts';

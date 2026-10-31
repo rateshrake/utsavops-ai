@@ -13,7 +13,7 @@ interface CrisisRiskTableProps {
 
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
-export const CrisisRiskTable: React.FC<CrisisRiskTableProps> = ({ scenarios }) => {
+export const CrisisRiskTable: React.FC<CrisisRiskTableProps> = React.memo(({ scenarios }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   if (scenarios.length === 0) return null;
@@ -119,6 +119,7 @@ export const CrisisRiskTable: React.FC<CrisisRiskTableProps> = ({ scenarios }) =
       )}
     </div>
   );
-};
+});
+CrisisRiskTable.displayName = 'CrisisRiskTable';
 
 export default CrisisRiskTable;

@@ -4,9 +4,10 @@
 // "Currently no API is configured. Demo mode is available. Would you like to continue with the demo mode?"
 // Yes -> Continues with smart demo plan
 // No  -> Opens the simplified API configuration panel
+// Includes focus trap and Escape key listener for WCAG 2.1 accessibility.
 // =============================================================================
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Sparkles, Key, X } from 'lucide-react';
 
 interface NoApiConfirmModalProps {
@@ -22,6 +23,42 @@ export const NoApiConfirmModal: React.FC<NoApiConfirmModalProps> = ({
   onOpenSettings,
   onClose,
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement?.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement?.focus();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
@@ -33,6 +70,7 @@ export const NoApiConfirmModal: React.FC<NoApiConfirmModalProps> = ({
       onClick={onClose}
     >
       <div
+        ref={modalRef}
         className="relative w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 sm:p-7 space-y-5 animate-scaleUp"
         onClick={(e) => e.stopPropagation()}
       >
@@ -95,5 +133,6 @@ export const NoApiConfirmModal: React.FC<NoApiConfirmModalProps> = ({
     </div>
   );
 };
+NoApiConfirmModal.displayName = 'NoApiConfirmModal';
 
 export default NoApiConfirmModal;

@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Loader2, CheckCircle2, Cpu } from 'lucide-react';
+import { LOADING_PROGRESS } from '../constants/budgetWeights';
 
 interface LoadingSkeletonProps {
   label: string;
@@ -23,7 +24,7 @@ const DEFAULT_PLAN_STEPS = [
   'Finalizing synchronized celebration master plan',
 ];
 
-export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
+export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = React.memo(({
   label,
   subLabel,
   cardCount = 3,
@@ -43,10 +44,13 @@ export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
   const activeSteps = steps && steps.length > 0 ? steps : DEFAULT_PLAN_STEPS;
   const elapsedSec = (elapsedMs / 1000).toFixed(1);
 
-  // Smooth asymptotic progression curve: advances quickly at first, then gently approaches ~94% while waiting for LLM
+  // Smooth asymptotic progression curve: advances quickly at first, then gently approaches max % while waiting for LLM
   const duration = Math.max(5, estimatedDurationSeconds);
-  const progressRatio = 1 - Math.exp(-(elapsedMs / 1000) / (duration * 0.42));
-  const progress = Math.min(94, Math.max(8, Math.round(progressRatio * 100)));
+  const progressRatio = 1 - Math.exp(-(elapsedMs / 1000) / (duration * LOADING_PROGRESS.CURVE_FACTOR));
+  const progress = Math.min(
+    LOADING_PROGRESS.MAX_PROGRESS_PCT,
+    Math.max(LOADING_PROGRESS.MIN_PROGRESS_PCT, Math.round(progressRatio * 100))
+  );
 
   // Calculate active step index based on progress percentage
   const stepIndex = Math.min(
@@ -170,4 +174,5 @@ export const LoadingSkeleton: React.FC<LoadingSkeletonProps> = ({
       </div>
     </div>
   );
-};
+});
+LoadingSkeleton.displayName = 'LoadingSkeleton';

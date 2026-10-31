@@ -1,30 +1,15 @@
 // =============================================================================
 // UtsavAI — Simplified BYOK & Model Settings Modal
-// Simple, clean panel:
-// 1. Choose Provider (OpenRouter, Groq, Google Gemini, OpenAI, xAI Grok, Custom)
-// 2. Enter API Key
-// 3. Manually type Model Name (no long model cards/lists)
-// 4. Test Live Connection & Save
+// Modular coordination panel:
+// 1. Choose Provider (ProviderSelector)
+// 2. Enter API Key (ApiKeyInput)
+// 3. Manually type Model Name (ModelNameInput)
+// 4. Test Live Connection (ConnectionTester)
+// Includes focus trap and escape key management for WCAG 2.1 compliance.
 // =============================================================================
 
-import React, { useState, useEffect } from 'react';
-import {
-  X,
-  Key,
-  Eye,
-  EyeOff,
-  CheckCircle,
-  AlertTriangle,
-  Zap,
-  Cpu,
-  Globe,
-  Sparkles,
-  Layers,
-  ExternalLink,
-  Loader2,
-  Check,
-  Trash2,
-} from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { X, Key, CheckCircle, Trash2 } from 'lucide-react';
 import {
   PROVIDERS,
   type ProviderId,
@@ -40,6 +25,10 @@ import {
   validateProviderKey,
   testProviderConnection,
 } from '../services/geminiService';
+import { ProviderSelector } from './apikey/ProviderSelector';
+import { ApiKeyInput } from './apikey/ApiKeyInput';
+import { ModelNameInput } from './apikey/ModelNameInput';
+import { ConnectionTester } from './apikey/ConnectionTester';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -52,7 +41,6 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
   const [inputKey, setInputKey] = useState<string>('');
   const [selectedModel, setSelectedModel] = useState<string>('');
   const [customBaseUrl, setCustomBaseUrl] = useState<string>('');
-  const [showKey, setShowKey] = useState<boolean>(false);
   const [saved, setSaved] = useState<boolean>(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
@@ -64,16 +52,9 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
     elapsedSeconds?: number;
   } | null>(null);
 
-  // Load current values when modal opens or provider changes
-  useEffect(() => {
-    if (isOpen) {
-      const activeP = getActiveProvider();
-      setSelectedProvider(activeP);
-      loadProviderSettings(activeP);
-    }
-  }, [isOpen]);
+  const modalRef = useRef<HTMLDivElement>(null);
 
-  const loadProviderSettings = (providerId: ProviderId) => {
+  const loadProviderSettings = useCallback((providerId: ProviderId) => {
     const key = getProviderApiKey(providerId);
     setInputKey(key);
 
@@ -86,9 +67,53 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
 
     setValidationError(null);
     setTestResult(null);
-  };
+  }, []);
 
-  const currentProviderDef = PROVIDERS[selectedProvider] || PROVIDERS.openrouter;
+  // Load current values when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      const activeP = getActiveProvider();
+      setSelectedProvider(activeP);
+      loadProviderSettings(activeP);
+    }
+  }, [isOpen, loadProviderSettings]);
+
+  // Focus trap & Escape key handler (WCAG 2.1 compliance)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        return;
+      }
+
+      if (e.key === 'Tab' && modalRef.current) {
+        const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        const firstElement = focusableElements[0];
+        const lastElement = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) {
+          if (document.activeElement === firstElement) {
+            e.preventDefault();
+            lastElement?.focus();
+          }
+        } else {
+          if (document.activeElement === lastElement) {
+            e.preventDefault();
+            firstElement?.focus();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  const currentProviderDef = PROVIDERS[selectedProvider] ?? PROVIDERS.openrouter;
   const hasExistingKey = Boolean(inputKey && inputKey.trim().length > 0);
 
   if (!isOpen) return null;
@@ -179,7 +204,10 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
       aria-modal="true"
       aria-labelledby="api-modal-title"
     >
-      <div className="relative w-full max-w-lg bg-white border border-slate-200 rounded-3xl shadow-2xl p-5 sm:p-7 space-y-5 animate-scaleUp max-h-[92vh] overflow-y-auto">
+      <div
+        ref={modalRef}
+        className="relative w-full max-w-lg bg-white border border-slate-200 rounded-3xl shadow-2xl p-5 sm:p-7 space-y-5 animate-scaleUp max-h-[92vh] overflow-y-auto"
+      >
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -205,228 +233,36 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
         </div>
 
         {/* 1. SELECT PROVIDER */}
-        <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-            <Layers size={13} className="text-indigo-600" />
-            <span>1. Select AI Provider</span>
-          </label>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2" role="radiogroup" aria-label="Select AI Provider">
-            {/* OpenRouter */}
-            <button
-              type="button"
-              onClick={() => handleProviderSelect('openrouter')}
-              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
-                selectedProvider === 'openrouter'
-                  ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs text-indigo-900 font-bold'
-                  : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 text-slate-700 font-medium'
-              }`}
-            >
-              <Globe size={16} className={selectedProvider === 'openrouter' ? 'text-indigo-600' : 'text-slate-500'} />
-              <span className="text-xs">OpenRouter</span>
-            </button>
-
-            {/* Groq */}
-            <button
-              type="button"
-              onClick={() => handleProviderSelect('groq')}
-              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
-                selectedProvider === 'groq'
-                  ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs text-indigo-900 font-bold'
-                  : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 text-slate-700 font-medium'
-              }`}
-            >
-              <Zap size={16} className={selectedProvider === 'groq' ? 'text-amber-500' : 'text-slate-500'} />
-              <span className="text-xs">Groq</span>
-            </button>
-
-            {/* Google Gemini */}
-            <button
-              type="button"
-              onClick={() => handleProviderSelect('gemini')}
-              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
-                selectedProvider === 'gemini'
-                  ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs text-indigo-900 font-bold'
-                  : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 text-slate-700 font-medium'
-              }`}
-            >
-              <Sparkles size={16} className={selectedProvider === 'gemini' ? 'text-indigo-600' : 'text-slate-500'} />
-              <span className="text-xs">Gemini</span>
-            </button>
-
-            {/* OpenAI */}
-            <button
-              type="button"
-              onClick={() => handleProviderSelect('openai')}
-              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
-                selectedProvider === 'openai'
-                  ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs text-indigo-900 font-bold'
-                  : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 text-slate-700 font-medium'
-              }`}
-            >
-              <Cpu size={16} className={selectedProvider === 'openai' ? 'text-indigo-600' : 'text-slate-500'} />
-              <span className="text-xs">OpenAI</span>
-            </button>
-
-            {/* xAI (Grok) */}
-            <button
-              type="button"
-              onClick={() => handleProviderSelect('xai')}
-              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
-                selectedProvider === 'xai'
-                  ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs text-indigo-900 font-bold'
-                  : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 text-slate-700 font-medium'
-              }`}
-            >
-              <Zap size={16} className={selectedProvider === 'xai' ? 'text-indigo-600' : 'text-slate-500'} />
-              <span className="text-xs">xAI (Grok)</span>
-            </button>
-
-            {/* Custom Endpoint */}
-            <button
-              type="button"
-              onClick={() => handleProviderSelect('custom')}
-              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
-                selectedProvider === 'custom'
-                  ? 'bg-indigo-50 border-indigo-500 ring-2 ring-indigo-500/20 shadow-xs text-indigo-900 font-bold'
-                  : 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 text-slate-700 font-medium'
-              }`}
-            >
-              <Layers size={16} className={selectedProvider === 'custom' ? 'text-indigo-600' : 'text-slate-500'} />
-              <span className="text-xs">Custom</span>
-            </button>
-          </div>
-        </div>
+        <ProviderSelector
+          selectedProvider={selectedProvider}
+          onSelect={handleProviderSelect}
+        />
 
         {/* 2. API KEY INPUT */}
-        <div className="space-y-2 pt-2 border-t border-slate-100">
-          <label htmlFor="api-key-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-            <Key size={13} className="text-indigo-600" />
-            <span>2. {currentProviderDef.name} API Key</span>
-          </label>
-
-          <div className="relative">
-            <input
-              id="api-key-input"
-              type={showKey ? 'text' : 'password'}
-              value={inputKey}
-              onChange={(e) => handleKeyChange(e.target.value)}
-              placeholder={currentProviderDef.keyPlaceholder}
-              className="w-full pr-10 pl-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm font-mono shadow-xs transition-colors"
-              aria-label={`Enter API key for ${currentProviderDef.name}`}
-            />
-            <button
-              type="button"
-              onClick={() => setShowKey(!showKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
-              aria-label={showKey ? 'Hide key' : 'Show key'}
-            >
-              {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-
-          {/* Validation Alert */}
-          {validationError && (
-            <div className="flex items-center gap-2 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-800 animate-fadeIn">
-              <AlertTriangle size={14} className="text-rose-600 shrink-0" />
-              <span>{validationError}</span>
-            </div>
-          )}
-
-          {/* Link to get key */}
-          <div className="text-[11px] text-slate-500">
-            Need a key?{' '}
-            <a
-              href={currentProviderDef.keyDocUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-indigo-600 hover:underline font-semibold inline-flex items-center gap-0.5"
-            >
-              <span>Get key from {currentProviderDef.shortName}</span>
-              <ExternalLink size={10} />
-            </a>
-          </div>
-        </div>
+        <ApiKeyInput
+          providerDef={currentProviderDef}
+          inputKey={inputKey}
+          onChange={handleKeyChange}
+          validationError={validationError}
+        />
 
         {/* 3. TYPE MODEL NAME */}
-        <div className="space-y-2 pt-2 border-t border-slate-100">
-          <label htmlFor="model-name-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-            <Cpu size={13} className="text-indigo-600" />
-            <span>3. Model Name / Identifier</span>
-          </label>
-
-          <input
-            id="model-name-input"
-            type="text"
-            value={selectedModel}
-            onChange={(e) => handleModelInputChange(e.target.value)}
-            placeholder={currentProviderDef.modelPlaceholder}
-            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm font-mono shadow-xs font-semibold"
-            aria-label="Enter model identifier"
-          />
-
-          <p className="text-[11px] text-slate-500 leading-snug">
-            Type the exact model identifier you want to call (e.g. <code className="bg-slate-100 px-1 py-0.5 rounded text-slate-800 font-mono">{currentProviderDef.defaultModel || 'model-name'}</code>).
-          </p>
-        </div>
-
-        {/* Custom Base URL (if Custom provider selected) */}
-        {selectedProvider === 'custom' && (
-          <div className="space-y-1.5 pt-2 border-t border-slate-100">
-            <label htmlFor="custom-base-url-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Custom Base URL
-            </label>
-            <input
-              id="custom-base-url-input"
-              type="text"
-              value={customBaseUrl}
-              onChange={(e) => setCustomBaseUrl(e.target.value)}
-              placeholder="https://api.together.xyz/v1 or http://localhost:11434/v1"
-              className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-mono shadow-xs"
-            />
-          </div>
-        )}
+        <ModelNameInput
+          providerDef={currentProviderDef}
+          isCustom={selectedProvider === 'custom'}
+          selectedModel={selectedModel}
+          onModelChange={handleModelInputChange}
+          customBaseUrl={customBaseUrl}
+          onCustomBaseUrlChange={setCustomBaseUrl}
+        />
 
         {/* 4. LIVE CONNECTION TEST */}
-        <div className="pt-2 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={handleTestConnection}
-            disabled={isTesting || !inputKey.trim() || !selectedModel.trim()}
-            className="px-4 py-2 rounded-xl border border-indigo-200 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 font-semibold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-            title="Send a quick test message to verify key & model before saving"
-          >
-            {isTesting ? (
-              <>
-                <Loader2 size={13} className="animate-spin text-indigo-600" />
-                <span>Testing Connection...</span>
-              </>
-            ) : (
-              <>
-                <Zap size={13} className="text-amber-500" />
-                <span>Test Live Connection</span>
-              </>
-            )}
-          </button>
-
-          {/* Test Feedback Result */}
-          {testResult && (
-            <div
-              className={`text-xs px-3 py-1.5 rounded-xl border flex items-center gap-1.5 ${
-                testResult.success
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                  : 'bg-rose-50 text-rose-800 border-rose-200'
-              }`}
-            >
-              {testResult.success ? (
-                <Check size={14} className="text-emerald-600 shrink-0" />
-              ) : (
-                <AlertTriangle size={14} className="text-rose-600 shrink-0" />
-              )}
-              <span className="truncate max-w-xs">{testResult.message}</span>
-            </div>
-          )}
-        </div>
+        <ConnectionTester
+          isTesting={isTesting}
+          canTest={Boolean(inputKey.trim() && selectedModel.trim())}
+          onTest={handleTestConnection}
+          testResult={testResult}
+        />
 
         {/* 5. FOOTER ACTIONS */}
         <div className="flex flex-col sm:flex-row gap-2.5 pt-3 border-t border-slate-100">
@@ -463,5 +299,6 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose, onKey
     </div>
   );
 };
+ApiKeyModal.displayName = 'ApiKeyModal';
 
 export default ApiKeyModal;

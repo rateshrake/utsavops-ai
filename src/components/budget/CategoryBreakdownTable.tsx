@@ -19,7 +19,7 @@ interface CategoryBreakdownTableProps {
 
 const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 
-export const CategoryBreakdownTable: React.FC<CategoryBreakdownTableProps> = ({
+export const CategoryBreakdownTable: React.FC<CategoryBreakdownTableProps> = React.memo(({
   categories,
   totalBudget = 800000,
   guestCount,
@@ -215,4 +215,5 @@ export const CategoryBreakdownTable: React.FC<CategoryBreakdownTableProps> = ({
       )}
     </div>
   );
-};
+});
+CategoryBreakdownTable.displayName = 'CategoryBreakdownTable';

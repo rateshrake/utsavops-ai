@@ -5,7 +5,7 @@
 // 3. Trade-Off Strategies in Segmented Tab Switcher with zero nested scrollbars
 // =============================================================================
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { CheckCircle2, ShieldCheck, IndianRupee, Users, Sparkles } from 'lucide-react';
 import type {
   BudgetCategory,
@@ -65,7 +65,7 @@ export const BudgetCrisis: React.FC<BudgetCrisisProps> = ({
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Keep trade-off strategies dynamically synced whenever profile budget or categories update
-  React.useEffect(() => {
+  useEffect(() => {
     setTradeOffStrategies((prev) => {
       const currentStrategyBudget = prev[0]?.newTotalBudget;
       const expectedScaledBudget = Math.round(profile.totalBudget * 0.9);
@@ -79,66 +79,81 @@ export const BudgetCrisis: React.FC<BudgetCrisisProps> = ({
     });
   }, [profile.totalBudget, profile.guestCount, profile.prioritiesRanked, budgetCategories, activeShockTitle]);
 
-  const totalAllocated = calculateTotalAllocated(budgetCategories);
-  const totalActual = calculateTotalActual(budgetCategories);
-  const perHeadBudget = profile.guestCount > 0 ? Math.round(profile.totalBudget / profile.guestCount) : 0;
-  const topPriority = profile.prioritiesRanked[0] || 'Food & Catering';
+  const totalAllocated = useMemo(() => calculateTotalAllocated(budgetCategories), [budgetCategories]);
+  const totalActual = useMemo(() => calculateTotalActual(budgetCategories), [budgetCategories]);
+  const perHeadBudget = useMemo(
+    () => (profile.guestCount > 0 ? Math.round(profile.totalBudget / profile.guestCount) : 0),
+    [profile.totalBudget, profile.guestCount]
+  );
+  const topPriority = profile.prioritiesRanked[0] ?? 'Food & Catering';
 
-  const handleSimulateShock = async (description: string) => {
-    setIsSimulating(true);
-    setSimError(null);
-    setActiveShockTitle(description);
-    try {
-      if (isApiKeyAvailable()) {
-        const strategies = await simulateTradeOffs(profile, budgetCategories, description);
-        setTradeOffStrategies(strategies);
-      } else {
+  const handleSimulateShock = useCallback(
+    async (description: string) => {
+      setIsSimulating(true);
+      setSimError(null);
+      setActiveShockTitle(description);
+      try {
+        if (isApiKeyAvailable()) {
+          const strategies = await simulateTradeOffs(profile, budgetCategories, description);
+          setTradeOffStrategies(strategies);
+        } else {
+          setTradeOffStrategies(
+            calculateSmartTradeOffStrategies(profile, budgetCategories, description)
+          );
+        }
+      } catch (err) {
+        console.warn('[UtsavOps AI] Tradeoff simulation API error, falling back to smart calibrated strategies:', err);
+        const msg = err instanceof Error ? err.message : 'Trade-off simulation failed.';
+        setSimError(msg);
         setTradeOffStrategies(
           calculateSmartTradeOffStrategies(profile, budgetCategories, description)
         );
+      } finally {
+        setIsSimulating(false);
       }
-    } catch (err) {
-      console.warn('[UtsavOps AI] Tradeoff simulation API error, falling back to smart calibrated strategies:', err);
-      const msg = err instanceof Error ? err.message : 'Trade-off simulation failed.';
-      setSimError(msg);
-      setTradeOffStrategies(
-        calculateSmartTradeOffStrategies(profile, budgetCategories, description)
+    },
+    [profile, budgetCategories]
+  );
+
+  const handleSaveCategory = useCallback(
+    (updated: BudgetCategory) => {
+      onBudgetUpdate(budgetCategories.map((c) => (c.id === updated.id ? updated : c)));
+      setToastMessage(`✓ Budget updated: "${updated.name}" allocated to ${fmt(updated.allocatedAmount)}`);
+      setTimeout(() => setToastMessage(null), 3000);
+    },
+    [budgetCategories, onBudgetUpdate]
+  );
+
+  const handleToggleVerify = useCallback(
+    (cat: BudgetCategory) => {
+      onBudgetUpdate(
+        budgetCategories.map((c) =>
+          c.id === cat.id ? { ...c, isVerifiedQuote: !c.isVerifiedQuote } : c
+        )
       );
-    } finally {
-      setIsSimulating(false);
-    }
-  };
+    },
+    [budgetCategories, onBudgetUpdate]
+  );
 
-  const handleSaveCategory = (updated: BudgetCategory) => {
-    onBudgetUpdate(budgetCategories.map((c) => (c.id === updated.id ? updated : c)));
-    setToastMessage(`✓ Budget updated: "${updated.name}" allocated to ${fmt(updated.allocatedAmount)}`);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
+  const handleApplyStrategy = useCallback(
+    (strategy: TradeOffStrategy) => {
+      setAppliedStrategyId(strategy.id);
+      onApplyRevision(strategy);
+      setToastMessage(`✓ Budget updated! "${strategy.title}" successfully applied.`);
+      setTimeout(() => {
+        setToastMessage(null);
+      }, 4500);
 
-  const handleToggleVerify = (cat: BudgetCategory) => {
-    onBudgetUpdate(
-      budgetCategories.map((c) =>
-        c.id === cat.id ? { ...c, isVerifiedQuote: !c.isVerifiedQuote } : c
-      )
-    );
-  };
-
-  const handleApplyStrategy = (strategy: TradeOffStrategy) => {
-    setAppliedStrategyId(strategy.id);
-    onApplyRevision(strategy);
-    setToastMessage(`✓ Budget updated! "${strategy.title}" successfully applied.`);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 4500);
-
-    // Smoothly scroll down so the user immediately sees the updated envelopes and donut chart
-    setTimeout(() => {
-      const el = document.getElementById('budget-breakdown-section');
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 150);
-  };
+      // Smoothly scroll down so the user immediately sees the updated envelopes and donut chart
+      setTimeout(() => {
+        const el = document.getElementById('budget-breakdown-section');
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 150);
+    },
+    [onApplyRevision]
+  );
 
   return (
     <ErrorBoundary fallbackTitle="Error loading Budget & What-If planner">
@@ -147,6 +162,8 @@ export const BudgetCrisis: React.FC<BudgetCrisisProps> = ({
         {toastMessage && (
           <div
             role="status"
+            aria-live="polite"
+            aria-atomic="true"
             className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-2.5 text-emerald-800 text-xs font-semibold shadow-sm animate-pulse"
           >
             <CheckCircle2 size={16} className="text-emerald-600 flex-shrink-0" />

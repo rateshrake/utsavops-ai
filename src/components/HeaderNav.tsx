@@ -29,10 +29,10 @@ interface HeaderNavProps {
   activeModel?: string;
 }
 
-const fmt = (n: number) =>
+const fmt = (n: number): string =>
   n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : `₹${(n / 1000).toFixed(0)}K`;
 
-export const HeaderNav: React.FC<HeaderNavProps> = ({
+export const HeaderNav: React.FC<HeaderNavProps> = React.memo(({
   tabs,
   activeTab,
   onTabChange,
@@ -43,6 +43,19 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onOpenApiModal,
   activeModel,
 }) => {
+  const handleTabKeyDown = (e: React.KeyboardEvent, currentIdx: number) => {
+    if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      const nextIdx = (currentIdx + 1) % tabs.length;
+      const nextTab = tabs[nextIdx];
+      if (nextTab) onTabChange(nextTab.id);
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      const prevIdx = (currentIdx - 1 + tabs.length) % tabs.length;
+      const prevTab = tabs[prevIdx];
+      if (prevTab) onTabChange(prevTab.id);
+    }
+  };
   return (
     <header className="bg-white/95 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -74,6 +87,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                     <button
                       type="button"
                       onClick={() => onTabChange(tab.id)}
+                      onKeyDown={(e) => handleTabKeyDown(e, idx)}
                       className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap ${
                         isActive
                           ? 'bg-white text-indigo-900 border border-indigo-200/80 shadow-xs font-semibold'
@@ -173,4 +187,5 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
       </div>
     </header>
   );
-};
+});
+HeaderNav.displayName = 'HeaderNav';

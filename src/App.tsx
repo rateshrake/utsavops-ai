@@ -1,9 +1,10 @@
 // =============================================================================
 // UtsavOps AI — Main Application Shell
 // Responsive dashboard with top nav, summary pills, and 4 main tabs.
+// Wrapped in EventPlanProvider to prevent prop drilling and equipped with WCAG skip links.
 // =============================================================================
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import type {
   EventProfile,
   BudgetCategory,
@@ -32,6 +33,7 @@ import DependencyTimeline from './components/DependencyTimeline';
 import VendorQuoteAnalyzer from './components/VendorQuoteAnalyzer';
 import { HeaderNav, type TabId, type TabItem } from './components/HeaderNav';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { EventPlanProvider, type EventPlanContextType } from './context/EventPlanContext';
 
 const TABS: TabItem[] = [
   { id: 'discovery', stepNumber: 1, label: 'Event Setup', emoji: '✨', ariaLabel: 'Event Setup tab' },
@@ -40,12 +42,18 @@ const TABS: TabItem[] = [
   { id: 'vendor', stepNumber: 4, label: 'Compare Vendors', emoji: '🔍', ariaLabel: 'Compare Vendors tab' },
 ];
 
-const getDaysLeft = (dateStr: string) => {
+/**
+ * Calculates remaining days from today until target event date.
+ *
+ * @param dateStr - ISO date string (YYYY-MM-DD).
+ * @returns Non-negative number of days remaining.
+ */
+const getDaysLeft = (dateStr: string): number => {
   const diff = Math.round((new Date(dateStr).getTime() - Date.now()) / 86400000);
   return Math.max(0, diff);
 };
 
-const App: React.FC = () => {
+export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('discovery');
   const [apiModalOpen, setApiModalOpen] = useState(false);
   const [noApiModalOpen, setNoApiModalOpen] = useState(false);
@@ -74,8 +82,28 @@ const App: React.FC = () => {
     setApiKeyRefresh((r) => r + 1);
   }, []);
 
+  const handleOpenApiModal = useCallback((): void => {
+    setApiModalOpen(true);
+  }, []);
+
+  const handleCloseApiModal = useCallback((): void => {
+    setApiModalOpen(false);
+  }, []);
+
+  const handleCloseNoApiModal = useCallback((): void => {
+    setNoApiModalOpen(false);
+  }, []);
+
+  const handleKeyRefresh = useCallback((): void => {
+    setApiKeyRefresh((n) => n + 1);
+  }, []);
+
+  const handleClearGenError = useCallback((): void => {
+    setGenError(null);
+  }, []);
+
   const handleGenerateOfflineFallback = useCallback(
-    (targetProfile?: EventProfile) => {
+    (targetProfile?: EventProfile): void => {
       const prof = targetProfile || profile;
       if (targetProfile) {
         setProfile(targetProfile);
@@ -93,7 +121,7 @@ const App: React.FC = () => {
   );
 
   const handleGenerate = useCallback(
-    async (overrideProfile?: EventProfile) => {
+    async (overrideProfile?: EventProfile): Promise<void> => {
       const targetProfile = overrideProfile || profile;
       if (overrideProfile) {
         setProfile(overrideProfile);
@@ -129,18 +157,18 @@ const App: React.FC = () => {
     [profile]
   );
 
-  const handleConfirmDemo = useCallback(() => {
+  const handleConfirmDemo = useCallback((): void => {
     setNoApiModalOpen(false);
     handleGenerateOfflineFallback(pendingProfile || profile);
   }, [handleGenerateOfflineFallback, pendingProfile, profile]);
 
-  const handleOpenApiFromPrompt = useCallback(() => {
+  const handleOpenApiFromPrompt = useCallback((): void => {
     setNoApiModalOpen(false);
     setApiModalOpen(true);
   }, []);
 
   const handleLockVendorPrice = useCallback(
-    (categoryName: string, vendorName: string, amount: number) => {
+    (categoryName: string, vendorName: string, amount: number): void => {
       setBudgetCategories((prevCategories) =>
         prevCategories.map((cat) => {
           const isMatch =
@@ -164,201 +192,233 @@ const App: React.FC = () => {
     []
   );
 
-  const handleApplyRevision = useCallback((strategy: TradeOffStrategy) => {
-    setBudgetCategories((prevCategories) => {
-      // Helper function to check if an adjustment matches a category
-      const findMatch = (cat: BudgetCategory) => {
-        const catNameLower = cat.name.toLowerCase();
-        const catIdLower = cat.id.toLowerCase();
+  const handleApplyRevision = useCallback(
+    (strategy: TradeOffStrategy): void => {
+      setBudgetCategories((prevCategories) => {
+        const findMatch = (cat: BudgetCategory) => {
+          const catNameLower = cat.name.toLowerCase();
+          const catIdLower = cat.id.toLowerCase();
 
-        return strategy.categoryAdjustments.find((adj) => {
-          const adjNameLower = adj.categoryName.toLowerCase();
-          const adjIdLower = adj.categoryId.toLowerCase();
+          return strategy.categoryAdjustments.find((adj) => {
+            const adjNameLower = adj.categoryName.toLowerCase();
+            const adjIdLower = adj.categoryId.toLowerCase();
 
-          if (adjIdLower === catIdLower) return true;
-          if (adjNameLower === catNameLower) return true;
+            if (adjIdLower === catIdLower) return true;
+            if (adjNameLower === catNameLower) return true;
 
-          // Domain synonym and keyword matching
-          const keywords = [
-            ['cater', 'food'],
-            ['venue', 'hall', 'banquet'],
-            ['decor', 'floral', 'flower', 'mandap'],
-            ['photo', 'video', 'shoot', 'camera'],
-            ['entertain', 'music', 'dj', 'dhol'],
-            ['invite', 'gift', 'card'],
-            ['beauty', 'makeup', 'trousseau', 'mehendi'],
-            ['transport', 'car', 'logistics', 'travel'],
-            ['pandit', 'ritual', 'pooja'],
-            ['contingency', 'buffer', 'reserve'],
-            ['stationery', 'signage', 'misc'],
-          ];
+            const keywords = [
+              ['cater', 'food'],
+              ['venue', 'hall', 'banquet'],
+              ['decor', 'floral', 'flower', 'mandap'],
+              ['photo', 'video', 'shoot', 'camera'],
+              ['entertain', 'music', 'dj', 'dhol'],
+              ['invite', 'gift', 'card'],
+              ['beauty', 'makeup', 'trousseau', 'mehendi'],
+              ['transport', 'car', 'logistics', 'travel'],
+              ['pandit', 'ritual', 'pooja'],
+              ['contingency', 'buffer', 'reserve'],
+              ['stationery', 'signage', 'misc'],
+            ];
 
-          for (const group of keywords) {
-            const catMatchesGroup = group.some((k) => catNameLower.includes(k) || catIdLower.includes(k));
-            const adjMatchesGroup = group.some((k) => adjNameLower.includes(k) || adjIdLower.includes(k));
-            if (catMatchesGroup && adjMatchesGroup) return true;
+            for (const group of keywords) {
+              const catMatchesGroup = group.some((k) => catNameLower.includes(k) || catIdLower.includes(k));
+              const adjMatchesGroup = group.some((k) => adjNameLower.includes(k) || adjIdLower.includes(k));
+              if (catMatchesGroup && adjMatchesGroup) return true;
+            }
+
+            return false;
+          });
+        };
+
+        const matchedAdjIds = new Set<string>();
+
+        const updated = prevCategories.map((cat) => {
+          const match = findMatch(cat);
+          if (match) {
+            matchedAdjIds.add(match.categoryId);
+            return {
+              ...cat,
+              allocatedAmount: match.newAmount,
+              notes: match.notes ? `${match.notes}` : cat.notes,
+            };
           }
-
-          return false;
+          return cat;
         });
-      };
 
-      const matchedAdjIds = new Set<string>();
-
-      const updated = prevCategories.map((cat) => {
-        const match = findMatch(cat);
-        if (match) {
-          matchedAdjIds.add(match.categoryId);
-          return {
-            ...cat,
-            allocatedAmount: match.newAmount,
-            notes: match.notes ? `${match.notes}` : cat.notes,
-          };
+        // Add any missing new categories from the strategy
+        for (const adj of strategy.categoryAdjustments) {
+          if (!matchedAdjIds.has(adj.categoryId) && adj.delta !== 0) {
+            updated.push({
+              id: adj.categoryId,
+              name: adj.categoryName,
+              allocatedAmount: adj.newAmount,
+              actualCost: 0,
+              isVerifiedQuote: false,
+              notes: adj.notes || 'Adjusted allocation',
+            });
+          }
         }
-        return cat;
+
+        // Reconcile total budget sum
+        if (strategy.newTotalBudget) {
+          const currentSum = updated.reduce((sum, c) => sum + c.allocatedAmount, 0);
+          const diff = strategy.newTotalBudget - currentSum;
+          if (diff !== 0) {
+            const targetCat =
+              updated.find((c) => c.id.includes('contingency') || c.name.toLowerCase().includes('contingency')) ??
+              updated[0];
+            if (targetCat) {
+              targetCat.allocatedAmount = Math.max(0, targetCat.allocatedAmount + diff);
+            }
+          }
+        }
+
+        return updated;
       });
 
-      // If strategy has new categories not in prevCategories, add them
-      for (const adj of strategy.categoryAdjustments) {
-        if (!matchedAdjIds.has(adj.categoryId) && adj.delta !== 0) {
-          updated.push({
-            id: adj.categoryId,
-            name: adj.categoryName,
-            allocatedAmount: adj.newAmount,
-            actualCost: 0,
-            isVerifiedQuote: false,
-            notes: adj.notes || 'Adjusted allocation',
-          });
-        }
+      setProfile((prevProfile) => ({
+        ...prevProfile,
+        totalBudget: strategy.newTotalBudget ?? prevProfile.totalBudget,
+        guestCount: strategy.newGuestCount ?? prevProfile.guestCount,
+        date: strategy.newDate ?? prevProfile.date,
+      }));
+
+      if (strategy.newDate && strategy.newDate !== profile.date) {
+        const shiftMs = new Date(strategy.newDate).getTime() - new Date(profile.date).getTime();
+        setTimelineTasks((prevTasks) =>
+          prevTasks.map((task) => {
+            const oldTime = new Date(task.dueDate).getTime();
+            const newDueDate = new Date(oldTime + shiftMs).toISOString().split('T')[0] ?? task.dueDate;
+            return {
+              ...task,
+              dueDate: newDueDate,
+            };
+          })
+        );
       }
+    },
+    [profile.date]
+  );
 
-      // Reconcile total budget to ensure sum(allocatedAmount) === newTotalBudget
-      if (strategy.newTotalBudget) {
-        const currentSum = updated.reduce((sum, c) => sum + c.allocatedAmount, 0);
-        const diff = strategy.newTotalBudget - currentSum;
-        if (diff !== 0) {
-          const targetCat =
-            updated.find((c) => c.id.includes('contingency') || c.name.toLowerCase().includes('contingency')) ||
-            updated[0];
-          if (targetCat) {
-            targetCat.allocatedAmount = Math.max(0, targetCat.allocatedAmount + diff);
-          }
-        }
-      }
-
-      return updated;
-    });
-
-    setProfile((prevProfile) => ({
-      ...prevProfile,
-      totalBudget: strategy.newTotalBudget ?? prevProfile.totalBudget,
-      guestCount: strategy.newGuestCount ?? prevProfile.guestCount,
-      date: strategy.newDate ?? prevProfile.date,
-    }));
-
-    if (strategy.newDate && strategy.newDate !== profile.date) {
-      const shiftMs = new Date(strategy.newDate).getTime() - new Date(profile.date).getTime();
-      setTimelineTasks((prevTasks) =>
-        prevTasks.map((task) => {
-          const oldTime = new Date(task.dueDate).getTime();
-          const newDueDate = new Date(oldTime + shiftMs).toISOString().split('T')[0];
-          return {
-            ...task,
-            dueDate: newDueDate,
-          };
-        })
-      );
-    }
-  }, [profile.date]);
+  const contextValue: EventPlanContextType = useMemo(
+    () => ({
+      profile,
+      setProfile,
+      hasApiKey: hasKey,
+      onOpenApiModal: handleOpenApiModal,
+      isGenerating,
+    }),
+    [profile, hasKey, handleOpenApiModal, isGenerating]
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-indigo-100 selection:text-indigo-900">
-      {/* Top Header & Navigation */}
-      <HeaderNav
-        tabs={TABS}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        totalBudget={profile.totalBudget}
-        guestCount={profile.guestCount}
-        daysLeft={daysLeft}
-        hasApiKey={hasKey}
-        activeModel={currentModelName}
-        onOpenApiModal={() => setApiModalOpen(true)}
-      />
+    <EventPlanProvider value={contextValue}>
+      <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col font-sans selection:bg-indigo-100 selection:text-indigo-900">
+        {/* WCAG Skip to Main Content Link */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:bg-indigo-600 focus:text-white focus:px-4 focus:py-2 focus:rounded-xl focus:text-sm focus:font-semibold focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          Skip to main content
+        </a>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8" role="main">
-        <ErrorBoundary fallbackTitle="Application tab failed to render">
+        {/* Top Header & Navigation */}
+        <HeaderNav
+          tabs={TABS}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          totalBudget={profile.totalBudget}
+          guestCount={profile.guestCount}
+          daysLeft={daysLeft}
+          hasApiKey={hasKey}
+          activeModel={currentModelName}
+          onOpenApiModal={handleOpenApiModal}
+        />
+
+        {/* Main Content Area */}
+        <main
+          id="main-content"
+          className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8"
+          role="main"
+        >
           {activeTab === 'discovery' && (
-            <DiscoverySetup
-              profile={profile}
-              onProfileChange={setProfile}
-              onGenerate={handleGenerate}
-              onUseOfflineFallback={handleGenerateOfflineFallback}
-              onClearError={() => setGenError(null)}
-              isGenerating={isGenerating}
-              error={genError}
-              hasApiKey={hasKey}
-              onOpenApiModal={() => setApiModalOpen(true)}
-            />
+            <ErrorBoundary fallbackTitle="Event Setup tab encountered an issue">
+              <DiscoverySetup
+                profile={profile}
+                onProfileChange={setProfile}
+                onGenerate={handleGenerate}
+                onUseOfflineFallback={handleGenerateOfflineFallback}
+                onClearError={handleClearGenError}
+                isGenerating={isGenerating}
+                error={genError}
+                hasApiKey={hasKey}
+                onOpenApiModal={handleOpenApiModal}
+              />
+            </ErrorBoundary>
           )}
 
           {activeTab === 'budget' && (
-            <BudgetCrisis
-              profile={profile}
-              budgetCategories={budgetCategories}
-              crisisScenarios={crisisScenarios}
-              planSummary={planSummary}
-              onBudgetUpdate={setBudgetCategories}
-              onApplyRevision={handleApplyRevision}
-            />
+            <ErrorBoundary fallbackTitle="Budget & What-If planner encountered an issue">
+              <BudgetCrisis
+                profile={profile}
+                budgetCategories={budgetCategories}
+                crisisScenarios={crisisScenarios}
+                planSummary={planSummary}
+                onBudgetUpdate={setBudgetCategories}
+                onApplyRevision={handleApplyRevision}
+              />
+            </ErrorBoundary>
           )}
 
           {activeTab === 'timeline' && (
-            <DependencyTimeline
-              profile={profile}
-              tasks={timelineTasks}
-              onTaskUpdate={setTimelineTasks}
-            />
+            <ErrorBoundary fallbackTitle="Checklist & Timeline encountered an issue">
+              <DependencyTimeline
+                profile={profile}
+                tasks={timelineTasks}
+                onTaskUpdate={setTimelineTasks}
+              />
+            </ErrorBoundary>
           )}
 
           {activeTab === 'vendor' && (
-            <VendorQuoteAnalyzer
-              profile={profile}
-              budgetCategories={budgetCategories}
-              onLockVendorPrice={handleLockVendorPrice}
-            />
+            <ErrorBoundary fallbackTitle="Vendor Comparison tool encountered an issue">
+              <VendorQuoteAnalyzer
+                profile={profile}
+                budgetCategories={budgetCategories}
+                onLockVendorPrice={handleLockVendorPrice}
+              />
+            </ErrorBoundary>
           )}
-        </ErrorBoundary>
-      </main>
+        </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p>© 2026 UtsavAI — Smart Celebration & Event Planner.</p>
-          <p className="flex items-center gap-1.5 font-mono text-[11px] text-slate-400">
-            <span>Model: {currentModelName}</span>
-            <span>•</span>
-            <span>Zero Data Loss State Sync</span>
-          </p>
-        </div>
-      </footer>
+        {/* Footer */}
+        <footer className="border-t border-slate-200 bg-white py-6 text-center text-xs text-slate-500">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p>© 2026 UtsavAI — Smart Celebration & Event Planner.</p>
+            <p className="flex items-center gap-1.5 font-mono text-[11px] text-slate-400">
+              <span>Model: {currentModelName}</span>
+              <span>•</span>
+              <span>Zero Data Loss State Sync</span>
+            </p>
+          </div>
+        </footer>
 
-      {/* No API Key Confirmation Modal */}
-      <NoApiConfirmModal
-        isOpen={noApiModalOpen}
-        onConfirmDemo={handleConfirmDemo}
-        onOpenSettings={handleOpenApiFromPrompt}
-        onClose={() => setNoApiModalOpen(false)}
-      />
+        {/* No API Key Confirmation Modal */}
+        <NoApiConfirmModal
+          isOpen={noApiModalOpen}
+          onConfirmDemo={handleConfirmDemo}
+          onOpenSettings={handleOpenApiFromPrompt}
+          onClose={handleCloseNoApiModal}
+        />
 
-      {/* API Key Modal */}
-      <ApiKeyModal
-        isOpen={apiModalOpen}
-        onClose={() => setApiModalOpen(false)}
-        onKeyChanged={() => setApiKeyRefresh((n) => n + 1)}
-      />
-    </div>
+        {/* API Key Modal */}
+        <ApiKeyModal
+          isOpen={apiModalOpen}
+          onClose={handleCloseApiModal}
+          onKeyChanged={handleKeyRefresh}
+        />
+      </div>
+    </EventPlanProvider>
   );
 };
 

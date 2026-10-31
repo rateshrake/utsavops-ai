@@ -65,7 +65,7 @@ const fmt = (n: number) => `₹${n.toLocaleString('en-IN')}`;
 const fmtShort = (n: number) =>
   n >= 100000 ? `₹${(n / 100000).toFixed(1)}L` : `₹${(n / 1000).toFixed(0)}K`;
 
-export const EventIntakeForm: React.FC<EventIntakeFormProps> = ({
+export const EventIntakeForm: React.FC<EventIntakeFormProps> = React.memo(({
   profile,
   onUpdate,
   perHeadBudget,
@@ -113,11 +113,13 @@ export const EventIntakeForm: React.FC<EventIntakeFormProps> = ({
 
       {/* 2. Event Name */}
       <div>
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+        <label htmlFor="event-title-input" className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
           Event Name / Title
         </label>
         <input
+          id="event-title-input"
           type="text"
+          maxLength={120}
           value={profile.title}
           onChange={(e) => onUpdate({ title: e.target.value })}
           placeholder="e.g. Sharma–Mehta Grand Wedding Celebration"
@@ -261,6 +263,7 @@ export const EventIntakeForm: React.FC<EventIntakeFormProps> = ({
         <div className="flex gap-2 mb-2">
           <input
             type="text"
+            maxLength={150}
             value={newMustHave}
             onChange={(e) => setNewMustHave(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && addMustHave()}
@@ -298,4 +301,5 @@ export const EventIntakeForm: React.FC<EventIntakeFormProps> = ({
       </div>
     </div>
   );
-};
+});
+EventIntakeForm.displayName = 'EventIntakeForm';

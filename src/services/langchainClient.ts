@@ -105,11 +105,17 @@ export const DEFAULT_OPENROUTER_KEY = (import.meta.env?.VITE_OPENROUTER_API_KEY 
 export const OPENROUTER_BASE_URL = PROVIDERS.openrouter.baseUrl;
 
 // Backward-compatible exports
+/** @deprecated Use PROVIDERS[provider].defaultModel instead */
 export const OPENROUTER_MODELS = ['openrouter/free'];
+/** @deprecated Use PROVIDERS.openrouter.defaultModel instead */
 export const DEFAULT_MODEL = 'openrouter/free';
+/** @deprecated Use PROVIDERS[provider].defaultModel instead */
 export const FLASH_MODELS = OPENROUTER_MODELS;
+/** @deprecated Use PROVIDERS.gemini.defaultModel instead */
 export const GEMINI_MODELS = ['gemini-2.5-flash'];
+/** @deprecated Use string instead */
 export type OpenRouterModelId = string;
+/** @deprecated Use string instead */
 export type FlashModelId = string;
 
 // Storage Keys
@@ -358,23 +364,27 @@ export function isCustomApiKey(): boolean {
   return false;
 }
 
-/** Legacy aliases preserved for backward compatibility */
+/** @deprecated Use saveProviderApiKey instead */
 export function saveApiKeyToSession(key: string): void {
   saveProviderApiKey(getActiveProvider(), key);
 }
 
+/** @deprecated Use clearProviderApiKey instead */
 export function clearSessionApiKey(): void {
   clearProviderApiKey(getActiveProvider());
 }
 
+/** @deprecated Use getProviderModel instead */
 export function getSelectedModel(): string {
   return getProviderModel(getActiveProvider());
 }
 
+/** @deprecated Use saveProviderModel instead */
 export function saveSelectedModel(model: string): void {
   saveProviderModel(getActiveProvider(), model);
 }
 
+/** @deprecated Use getProviderModel instead */
 export function resolveActiveModel(modelId?: string): string {
   if (!modelId) return getSelectedModel();
   return modelId;
@@ -593,7 +603,9 @@ export async function callLangChain(
 }
 
 /**
- * Backward compatibility aliases
+ * Backward compatibility aliases.
  */
+/** @deprecated Use callLangChain directly */
 export const callOpenRouter = callLangChain;
+/** @deprecated Use callLangChain directly */
 export const callGemini = callLangChain;

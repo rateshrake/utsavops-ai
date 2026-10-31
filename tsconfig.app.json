@@ -16,6 +16,11 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Strict Type-Checking Options */
+    "strict": true,
+    "noImplicitReturns": true,
+    "forceConsistentCasingInFileNames": true,
+
     /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,

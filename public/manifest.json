@@ -1,0 +1,21 @@
+{
+  "name": "UtsavOps AI — Smart Celebration & Event Planner",
+  "short_name": "UtsavOps AI",
+  "description": "AI-powered Indian celebration and event planning platform featuring budget crisis simulation, dependency timelines, and vendor quote analysis.",
+  "start_url": "/",
+  "display": "standalone",
+  "theme_color": "#4f46e5",
+  "background_color": "#f8fafc",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
