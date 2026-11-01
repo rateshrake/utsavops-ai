@@ -4,7 +4,7 @@
 // real-time summary pills, and subtle API key status.
 // =============================================================================
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Key, ChevronRight } from 'lucide-react';
 
 export type TabId = 'discovery' | 'budget' | 'timeline' | 'vendor';
@@ -43,17 +43,22 @@ export const HeaderNav: React.FC<HeaderNavProps> = React.memo(({
   onOpenApiModal,
   activeModel,
 }) => {
+  const tabButtonRefs = useRef<Array<HTMLButtonElement | null>>([]);
+
   const handleTabKeyDown = (e: React.KeyboardEvent, currentIdx: number) => {
+    let nextIdx = currentIdx;
     if (e.key === 'ArrowRight') {
-      e.preventDefault();
-      const nextIdx = (currentIdx + 1) % tabs.length;
-      const nextTab = tabs[nextIdx];
-      if (nextTab) onTabChange(nextTab.id);
+      nextIdx = (currentIdx + 1) % tabs.length;
     } else if (e.key === 'ArrowLeft') {
+      nextIdx = (currentIdx - 1 + tabs.length) % tabs.length;
+    }
+    if (nextIdx !== currentIdx) {
       e.preventDefault();
-      const prevIdx = (currentIdx - 1 + tabs.length) % tabs.length;
-      const prevTab = tabs[prevIdx];
-      if (prevTab) onTabChange(prevTab.id);
+      const nextTab = tabs[nextIdx];
+      if (nextTab) {
+        onTabChange(nextTab.id);
+        tabButtonRefs.current[nextIdx]?.focus();
+      }
     }
   };
   return (
@@ -85,9 +90,15 @@ export const HeaderNav: React.FC<HeaderNavProps> = React.memo(({
                 return (
                   <React.Fragment key={tab.id}>
                     <button
+                      ref={(el) => {
+                        tabButtonRefs.current[idx] = el;
+                      }}
+                      id={`tab-${tab.id}`}
+                      aria-controls={`tabpanel-${tab.id}`}
                       type="button"
                       onClick={() => onTabChange(tab.id)}
                       onKeyDown={(e) => handleTabKeyDown(e, idx)}
+                      tabIndex={isActive ? 0 : -1}
                       className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all cursor-pointer whitespace-nowrap ${
                         isActive
                           ? 'bg-white text-indigo-900 border border-indigo-200/80 shadow-xs font-semibold'
@@ -152,8 +163,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = React.memo(({
         {/* Mobile Sub-Navigation Row */}
         <nav
           className="flex md:hidden gap-1 pb-2.5 overflow-x-auto no-scrollbar border-t border-slate-100 pt-2"
-          aria-label="Mobile event planning tabs"
-          role="tablist"
+          aria-label="Mobile quick navigation"
         >
           {tabs.map((tab, idx) => {
             const isActive = activeTab === tab.id;
@@ -168,9 +178,8 @@ export const HeaderNav: React.FC<HeaderNavProps> = React.memo(({
                     ? 'bg-indigo-50 text-indigo-700 border border-indigo-200 font-semibold'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 }`}
+                aria-current={isActive ? 'page' : undefined}
                 aria-label={tab.ariaLabel}
-                aria-selected={isActive}
-                role="tab"
               >
                 <span
                   className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${

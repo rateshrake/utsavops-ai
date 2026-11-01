@@ -8,10 +8,31 @@
 // 5. xAI Grok (api.x.ai)
 // 6. Custom OpenAI-compatible endpoints (Ollama, Together, vLLM, etc.)
 // Powered by LangChain (@langchain/openai & @langchain/core).
+// Dynamically loaded on demand to preserve optimal bundle efficiency & FCP.
 // =============================================================================
 
-import { ChatOpenAI } from '@langchain/openai';
-import { SystemMessage, HumanMessage } from '@langchain/core/messages';
+interface LangChainModules {
+  ChatOpenAI: typeof import('@langchain/openai').ChatOpenAI;
+  SystemMessage: typeof import('@langchain/core/messages').SystemMessage;
+  HumanMessage: typeof import('@langchain/core/messages').HumanMessage;
+}
+
+let cachedLangChainModules: LangChainModules | null = null;
+
+/**
+ * Lazily loads LangChain runtime modules on demand.
+ * Keeps initial bundle lightweight (<180 kB) with zero LangChain payload on initial render.
+ */
+async function getLangChainModules(): Promise<LangChainModules> {
+  if (!cachedLangChainModules) {
+    const [{ ChatOpenAI }, { SystemMessage, HumanMessage }] = await Promise.all([
+      import('@langchain/openai'),
+      import('@langchain/core/messages'),
+    ]);
+    cachedLangChainModules = { ChatOpenAI, SystemMessage, HumanMessage };
+  }
+  return cachedLangChainModules;
+}
 
 export type ProviderId = 'openrouter' | 'groq' | 'gemini' | 'openai' | 'xai' | 'custom';
 
@@ -474,6 +495,7 @@ export async function testProviderConnection(
   }
 
   try {
+    const { ChatOpenAI, SystemMessage, HumanMessage } = await getLangChainModules();
     const llm = new ChatOpenAI({
       model: modelName,
       apiKey: apiKey,
@@ -527,6 +549,8 @@ export async function callLangChain(
   const enrichedPrompt = responseSchema
     ? `${prompt}\n\nCRITICAL INSTRUCTION: Return ONLY a valid JSON object matching the required schema below (with exact keys, no markdown codeblocks, no reasoning/think tags, no commentary):\n${JSON.stringify(responseSchema, null, 2)}`
     : prompt;
+
+  const { ChatOpenAI, SystemMessage, HumanMessage } = await getLangChainModules();
 
   const messages = [];
   if (systemInstruction && systemInstruction.trim().length > 0) {

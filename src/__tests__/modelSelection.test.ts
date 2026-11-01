@@ -18,12 +18,14 @@ const mockSessionStorage = {
   },
 };
 
-// Polyfill window and sessionStorage for Node/Vitest test runner
-(globalThis as unknown as { window: unknown }).window = {
-  sessionStorage: mockSessionStorage,
-  location: { origin: 'http://localhost:5173' },
-};
-(globalThis as unknown as { sessionStorage: unknown }).sessionStorage = mockSessionStorage;
+// Polyfill window and sessionStorage only if not in DOM environment
+if (typeof window === 'undefined') {
+  (globalThis as unknown as { window: unknown }).window = {
+    sessionStorage: mockSessionStorage,
+    location: { origin: 'http://localhost:5173' },
+  };
+  (globalThis as unknown as { sessionStorage: unknown }).sessionStorage = mockSessionStorage;
+}
 
 import {
   PROVIDERS,

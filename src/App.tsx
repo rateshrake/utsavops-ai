@@ -28,12 +28,28 @@ import {
 import ApiKeyModal from './components/ApiKeyModal';
 import NoApiConfirmModal from './components/NoApiConfirmModal';
 import DiscoverySetup from './components/DiscoverySetup';
-import BudgetCrisis from './components/BudgetCrisis';
-import DependencyTimeline from './components/DependencyTimeline';
-import VendorQuoteAnalyzer from './components/VendorQuoteAnalyzer';
 import { HeaderNav, type TabId, type TabItem } from './components/HeaderNav';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { EventPlanProvider, type EventPlanContextType } from './context/EventPlanContext';
+
+// Asynchronously load Tabs 2-4 to keep initial bundle ultra-lean (<180 kB)
+const BudgetCrisis = React.lazy(() => import('./components/BudgetCrisis'));
+const DependencyTimeline = React.lazy(() => import('./components/DependencyTimeline'));
+const VendorQuoteAnalyzer = React.lazy(() => import('./components/VendorQuoteAnalyzer'));
+
+/** Accessible tab fallback skeleton preventing layout shift */
+const TabLoadingFallback: React.FC<{ label: string }> = ({ label }) => (
+  <div className="space-y-4 py-8 animate-pulse" role="status" aria-live="polite">
+    <div className="h-8 bg-slate-200 rounded-2xl w-48 mb-6" />
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="h-36 bg-slate-200/80 rounded-3xl" />
+      <div className="h-36 bg-slate-200/80 rounded-3xl" />
+      <div className="h-36 bg-slate-200/80 rounded-3xl" />
+    </div>
+    <div className="h-64 bg-slate-200/60 rounded-3xl mt-6" />
+    <span className="sr-only">Loading {label} tab content...</span>
+  </div>
+);
 
 const TABS: TabItem[] = [
   { id: 'discovery', stepNumber: 1, label: 'Event Setup', emoji: '✨', ariaLabel: 'Event Setup tab' },
@@ -341,54 +357,64 @@ export const App: React.FC = () => {
           className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8"
           role="main"
         >
-          {activeTab === 'discovery' && (
-            <ErrorBoundary fallbackTitle="Event Setup tab encountered an issue">
-              <DiscoverySetup
-                profile={profile}
-                onProfileChange={setProfile}
-                onGenerate={handleGenerate}
-                onUseOfflineFallback={handleGenerateOfflineFallback}
-                onClearError={handleClearGenError}
-                isGenerating={isGenerating}
-                error={genError}
-                hasApiKey={hasKey}
-                onOpenApiModal={handleOpenApiModal}
-              />
-            </ErrorBoundary>
-          )}
+          <div
+            role="tabpanel"
+            id={`tabpanel-${activeTab}`}
+            aria-labelledby={`tab-${activeTab}`}
+            tabIndex={0}
+            className="focus:outline-none"
+          >
+            <React.Suspense fallback={<TabLoadingFallback label={TABS.find((t) => t.id === activeTab)?.label ?? 'tab'} />}>
+              {activeTab === 'discovery' && (
+                <ErrorBoundary fallbackTitle="Event Setup tab encountered an issue">
+                  <DiscoverySetup
+                    profile={profile}
+                    onProfileChange={setProfile}
+                    onGenerate={handleGenerate}
+                    onUseOfflineFallback={handleGenerateOfflineFallback}
+                    onClearError={handleClearGenError}
+                    isGenerating={isGenerating}
+                    error={genError}
+                    hasApiKey={hasKey}
+                    onOpenApiModal={handleOpenApiModal}
+                  />
+                </ErrorBoundary>
+              )}
 
-          {activeTab === 'budget' && (
-            <ErrorBoundary fallbackTitle="Budget & What-If planner encountered an issue">
-              <BudgetCrisis
-                profile={profile}
-                budgetCategories={budgetCategories}
-                crisisScenarios={crisisScenarios}
-                planSummary={planSummary}
-                onBudgetUpdate={setBudgetCategories}
-                onApplyRevision={handleApplyRevision}
-              />
-            </ErrorBoundary>
-          )}
+              {activeTab === 'budget' && (
+                <ErrorBoundary fallbackTitle="Budget & What-If planner encountered an issue">
+                  <BudgetCrisis
+                    profile={profile}
+                    budgetCategories={budgetCategories}
+                    crisisScenarios={crisisScenarios}
+                    planSummary={planSummary}
+                    onBudgetUpdate={setBudgetCategories}
+                    onApplyRevision={handleApplyRevision}
+                  />
+                </ErrorBoundary>
+              )}
 
-          {activeTab === 'timeline' && (
-            <ErrorBoundary fallbackTitle="Checklist & Timeline encountered an issue">
-              <DependencyTimeline
-                profile={profile}
-                tasks={timelineTasks}
-                onTaskUpdate={setTimelineTasks}
-              />
-            </ErrorBoundary>
-          )}
+              {activeTab === 'timeline' && (
+                <ErrorBoundary fallbackTitle="Checklist & Timeline encountered an issue">
+                  <DependencyTimeline
+                    profile={profile}
+                    tasks={timelineTasks}
+                    onTaskUpdate={setTimelineTasks}
+                  />
+                </ErrorBoundary>
+              )}
 
-          {activeTab === 'vendor' && (
-            <ErrorBoundary fallbackTitle="Vendor Comparison tool encountered an issue">
-              <VendorQuoteAnalyzer
-                profile={profile}
-                budgetCategories={budgetCategories}
-                onLockVendorPrice={handleLockVendorPrice}
-              />
-            </ErrorBoundary>
-          )}
+              {activeTab === 'vendor' && (
+                <ErrorBoundary fallbackTitle="Vendor Comparison tool encountered an issue">
+                  <VendorQuoteAnalyzer
+                    profile={profile}
+                    budgetCategories={budgetCategories}
+                    onLockVendorPrice={handleLockVendorPrice}
+                  />
+                </ErrorBoundary>
+              )}
+            </React.Suspense>
+          </div>
         </main>
 
         {/* Footer */}

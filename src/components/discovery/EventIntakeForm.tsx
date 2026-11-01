@@ -130,7 +130,10 @@ export const EventIntakeForm: React.FC<EventIntakeFormProps> = React.memo(({
       {/* 3. Budget & Quick Chips */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+          <label
+            htmlFor="total-budget-input"
+            className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5"
+          >
             <IndianRupee size={13} className="text-emerald-600" />
             <span>Total Budget</span>
           </label>
@@ -143,6 +146,7 @@ export const EventIntakeForm: React.FC<EventIntakeFormProps> = React.memo(({
             ₹
           </span>
           <input
+            id="total-budget-input"
             type="number"
             value={profile.totalBudget || ''}
             onChange={(e) => onUpdate({ totalBudget: Number(e.target.value) || 0 })}
@@ -172,7 +176,10 @@ export const EventIntakeForm: React.FC<EventIntakeFormProps> = React.memo(({
       {/* 4. Guest Count & Quick Chips */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+          <label
+            htmlFor="guest-count-input"
+            className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5"
+          >
             <Users size={13} className="text-indigo-600" />
             <span>Guest Count</span>
           </label>
@@ -183,6 +190,7 @@ export const EventIntakeForm: React.FC<EventIntakeFormProps> = React.memo(({
         <div className="relative mb-2">
           <Users size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
+            id="guest-count-input"
             type="number"
             value={profile.guestCount || ''}
             onChange={(e) => onUpdate({ guestCount: Number(e.target.value) || 0 })}
@@ -211,11 +219,15 @@ export const EventIntakeForm: React.FC<EventIntakeFormProps> = React.memo(({
 
       {/* 5. Event Date */}
       <div>
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+        <label
+          htmlFor="event-date-input"
+          className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center gap-1.5"
+        >
           <Calendar size={13} className="text-indigo-600" />
           <span>Event Date</span>
         </label>
         <input
+          id="event-date-input"
           type="date"
           value={profile.date}
           onChange={(e) => onUpdate({ date: e.target.value })}
@@ -255,13 +267,17 @@ export const EventIntakeForm: React.FC<EventIntakeFormProps> = React.memo(({
         </div>
       </div>
 
-      {/* 6. Non-Negotiable Must-Haves */}
+      {/* 7. Non-Negotiable Must-Haves */}
       <div>
-        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+        <label
+          htmlFor="must-have-input"
+          className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5"
+        >
           Non-Negotiable Must-Haves
         </label>
         <div className="flex gap-2 mb-2">
           <input
+            id="must-have-input"
             type="text"
             maxLength={150}
             value={newMustHave}

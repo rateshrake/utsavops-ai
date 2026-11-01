@@ -126,11 +126,16 @@ export const QuoteInputTabs: React.FC<QuoteInputTabsProps> = ({
 
               {/* Vendor Name Input */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                <label
+                  htmlFor={`vendor-name-${q.id}`}
+                  className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1"
+                >
                   Vendor Name / Business
                 </label>
                 <input
+                  id={`vendor-name-${q.id}`}
                   type="text"
+                  maxLength={100}
                   value={q.vendorName}
                   onChange={(e) => onUpdateQuote(q.id, { vendorName: e.target.value })}
                   placeholder={idx === 0 ? 'e.g. Royal Rasoi Catering' : 'e.g. Utsav Swad Hospitality'}
@@ -140,11 +145,16 @@ export const QuoteInputTabs: React.FC<QuoteInputTabsProps> = ({
 
               {/* Quotation Textarea (rows={5}) */}
               <div>
-                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                <label
+                  htmlFor={`vendor-raw-${q.id}`}
+                  className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1"
+                >
                   Quotation Text (WhatsApp message, estimate or email):
                 </label>
                 <textarea
+                  id={`vendor-raw-${q.id}`}
                   rows={5}
+                  maxLength={15000}
                   value={q.rawText}
                   onChange={(e) => onUpdateQuote(q.id, { rawText: e.target.value })}
                   placeholder="Paste vendor estimate, menu prices, inclusions, or WhatsApp breakdown here..."

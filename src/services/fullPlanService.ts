@@ -124,6 +124,14 @@ IMPORTANT: Be direct, concise, and return strictly valid JSON starting with { an
     planSummaryStr = `Master celebration plan for ${profile.occasion} ("${profile.title}") with ₹${profile.totalBudget.toLocaleString('en-IN')} budget cap.`;
   }
 
+  let lazyFallbackPlan: GeneratedPlan | null = null;
+  const getFallbackPlan = (): GeneratedPlan => {
+    if (!lazyFallbackPlan) {
+      lazyFallbackPlan = generateSmartDemoPlan(profile);
+    }
+    return lazyFallbackPlan;
+  };
+
   // Build budget categories, falling back to smart calibrated envelopes if array is empty
   let budgetCategories: BudgetCategory[] = [];
   if (Array.isArray(parsed.budgetCategories) && parsed.budgetCategories.length > 0) {
@@ -148,8 +156,7 @@ IMPORTANT: Be direct, concise, and return strictly valid JSON starting with { an
       }
     }
   } else {
-    const smart = generateSmartDemoPlan(profile);
-    budgetCategories = smart.budgetCategories;
+    budgetCategories = getFallbackPlan().budgetCategories;
   }
 
   // Build timeline tasks, falling back to smart tasks if missing
@@ -171,8 +178,7 @@ IMPORTANT: Be direct, concise, and return strictly valid JSON starting with { an
         | 'Low',
     }));
   } else {
-    const smart = generateSmartDemoPlan(profile);
-    timelineTasks = smart.timelineTasks;
+    timelineTasks = getFallbackPlan().timelineTasks;
   }
 
   // Build crisis scenarios, falling back to smart scenarios if missing
@@ -186,8 +192,7 @@ IMPORTANT: Be direct, concise, and return strictly valid JSON starting with { an
       alternatives: Array.isArray(s.alternatives) ? s.alternatives : [],
     }));
   } else {
-    const smart = generateSmartDemoPlan(profile);
-    crisisScenarios = smart.crisisScenarios;
+    crisisScenarios = getFallbackPlan().crisisScenarios;
   }
 
   return {

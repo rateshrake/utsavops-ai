@@ -38,6 +38,7 @@ export const ModelNameInput: React.FC<ModelNameInputProps> = ({
         <input
           id="model-name-input"
           type="text"
+          maxLength={128}
           value={selectedModel}
           onChange={(e) => onModelChange(e.target.value)}
           placeholder={providerDef.modelPlaceholder}
@@ -65,6 +66,7 @@ export const ModelNameInput: React.FC<ModelNameInputProps> = ({
           <input
             id="custom-base-url-input"
             type="text"
+            maxLength={256}
             value={customBaseUrl}
             onChange={(e) => onCustomBaseUrlChange(e.target.value)}
             placeholder="https://api.together.xyz/v1 or http://localhost:11434/v1"

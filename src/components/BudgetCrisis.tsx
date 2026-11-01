@@ -64,6 +64,10 @@ export const BudgetCrisis: React.FC<BudgetCrisisProps> = ({
   const [appliedStrategyId, setAppliedStrategyId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Primitive stable keys to prevent effect churn on parent re-renders
+  const prioritiesKey = profile.prioritiesRanked.join('|');
+  const categoriesAllocatedSum = budgetCategories.reduce((sum, c) => sum + (c.allocatedAmount || 0), 0);
+
   // Keep trade-off strategies dynamically synced whenever profile budget or categories update
   useEffect(() => {
     setTradeOffStrategies((prev) => {
@@ -77,7 +81,7 @@ export const BudgetCrisis: React.FC<BudgetCrisisProps> = ({
       }
       return prev;
     });
-  }, [profile.totalBudget, profile.guestCount, profile.prioritiesRanked, budgetCategories, activeShockTitle]);
+  }, [profile.totalBudget, profile.guestCount, prioritiesKey, categoriesAllocatedSum, activeShockTitle]);
 
   const totalAllocated = useMemo(() => calculateTotalAllocated(budgetCategories), [budgetCategories]);
   const totalActual = useMemo(() => calculateTotalActual(budgetCategories), [budgetCategories]);

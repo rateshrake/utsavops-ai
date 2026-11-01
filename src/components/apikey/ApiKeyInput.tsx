@@ -36,6 +36,7 @@ export const ApiKeyInput: React.FC<ApiKeyInputProps> = ({
         <input
           id="api-key-input"
           type={showKey ? 'text' : 'password'}
+          maxLength={256}
           value={inputKey}
           onChange={(e) => onChange(e.target.value)}
           placeholder={providerDef.keyPlaceholder}
